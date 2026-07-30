@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!--
+      Backups are found by asking the system which installed apps publish a
+      `*.lightsync.backup` provider. Package visibility on Android 11+ hides that from a
+      <queries> block unless every app is named in advance, which would mean a LightSync
+      release every time an app is added — the exact coupling this design exists to avoid.
+    -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+
+    <application
+        android:name=".SyncApp"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:usesCleartextTraffic="true"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.LightSync">
+
+        <!--
+          Cleartext is allowed above because BasilNet is a LAN service with no certificate, and
+          the payload is already sealed on this device before it is handed to the socket. The
+          transport carries ciphertext either way; TLS here would protect the token, which is
+          why the README says to keep the port bound to the LAN address.
+        -->
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/app_name"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.LightSync">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

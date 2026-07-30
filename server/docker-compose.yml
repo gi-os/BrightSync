@@ -1,0 +1,18 @@
+# On BasilNet: docker compose up -d
+#
+# The token is the only credential, so put a real one in .env rather than here. Bound to the
+# LAN address rather than 0.0.0.0 as a reminder of what this is: a service whose second line
+# of defence is the network it sits on.
+services:
+  lightsync:
+    build: .
+    container_name: lightsync
+    restart: unless-stopped
+    ports:
+      - "192.168.68.59:8099:8099"
+    environment:
+      LIGHTSYNC_TOKEN: ${LIGHTSYNC_TOKEN:?set LIGHTSYNC_TOKEN in .env}
+      LIGHTSYNC_KEEP: 10
+      LIGHTSYNC_MAX_MB: 64
+    volumes:
+      - ./data:/data
