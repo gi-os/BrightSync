@@ -14,5 +14,23 @@ services:
       LIGHTSYNC_TOKEN: ${LIGHTSYNC_TOKEN:?set LIGHTSYNC_TOKEN in .env}
       LIGHTSYNC_KEEP: 10
       LIGHTSYNC_MAX_MB: 64
+      # Work-calendar bridge. GRAPH_CLIENT_ID is a public client id and safe to commit;
+      # CALENDAR_SECRET is the feed URL's only protection, so it lives in .env.
+      GRAPH_CLIENT_ID: ${GRAPH_CLIENT_ID:-}
+      GRAPH_TENANT: ${GRAPH_TENANT:-organizations}
+      CALENDAR_SECRET: ${CALENDAR_SECRET:-}
+      CALENDAR_NAME: ${CALENDAR_NAME:-Work}
+      CALENDAR_REFRESH_MIN: 20
     volumes:
       - ./data:/data
+    networks:
+      - default
+      # So Cloudflare's tunnel can reach the calendar feed as `http://lightsync:8099`
+      # rather than through the host's LAN address, which the box does not answer on from
+      # inside itself. Leave this out if there is no tunnel — the LAN port still works.
+      - tunnel
+
+networks:
+  tunnel:
+    name: cloudfare_v2_default
+    external: true

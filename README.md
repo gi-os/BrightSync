@@ -53,6 +53,52 @@ Three routes, ten versions kept per app, files on disk under `data/<package>/<ep
 never decrypts anything and has no idea what it is holding. Bound to the LAN address rather than
 `0.0.0.0` as a reminder that the token's backup is the network.
 
+## The work-calendar bridge
+
+`server/calendar_bridge.py` rides along in the same container: Microsoft 365 in, one plain
+`.ics` out, so a Light Phone III can carry a work calendar without any of Microsoft's
+machinery on the phone. The phone's only job is a GET on a URL — see LightNotebook's
+"Subscribe to a URL".
+
+It exists here rather than on the phone for three reasons. There is no usable OAuth library
+on LightOS (MSAL and AppAuth both fail the "full browser" test that killed LightNews'
+first attempt). A corporate refresh token has no good home on a sideloaded app. And
+LightNotebook's `IcsParser` deliberately does not expand `RRULE`, so a raw Outlook export
+would show a weekly standup exactly once — whereas Graph's `calendarView` returns
+*instances*, already expanded, which is what this writes out.
+
+Set up once:
+
+```bash
+# .env
+GRAPH_CLIENT_ID=<the Azure app registration's application id>
+GRAPH_TENANT=<tenant id, or "organizations">
+CALENDAR_SECRET=$(openssl rand -hex 24)
+CALENDAR_NAME=Work
+```
+
+The Azure side is a **public client** app registration with delegated `Calendars.Read`,
+"Allow public client flows" enabled. No client secret: this box holds a refresh token, not
+a credential it could re-issue.
+
+Then link the account — device code flow, because this process has no browser:
+
+```bash
+curl -s -XPOST -H "X-Token: $TOKEN" http://192.168.68.59:8099/cal/auth/start
+# → {"go_to": "https://microsoft.com/devicelogin", "enter_code": "A1B2C3D4"}
+# type the code in a browser on a real computer, then:
+curl -s -H "X-Token: $TOKEN" http://192.168.68.59:8099/cal/status
+```
+
+The feed is then at `/cal/<CALENDAR_SECRET>/work.ics`, refreshed every 20 minutes, and
+served **from the last good file** — an outage at Microsoft's end, or a revoked token, still
+hands the phone the calendar it had. That URL has no header auth, because a calendar client's
+whole vocabulary is GET: **the URL is the credential.** Rotate `CALENDAR_SECRET` if it leaks.
+
+`python3 server/test_calendar_bridge.py` covers the iCalendar half (folding, escaping,
+all-day dates, cancelled events). The network half is deliberately untested — what can go
+wrong there is Microsoft's answer, not this code's arithmetic.
+
 ## Adding an app
 
 See [`module/README.md`](module/README.md). Copy one file, declare what to include, add six lines
@@ -102,6 +148,7 @@ that never ran, so the last failure sits on the front screen until a run succeed
 
 ```
 server/app.py            three routes, retention, no crypto
+server/calendar_bridge.py Microsoft Graph → one .ics the phone can GET
 module/LightSyncBackup.kt the per-app contribution: zip, restore, caller check
 sync/Crypto.kt           seal and open, format documented above
 sync/Server.kt           the three calls, HttpURLConnection

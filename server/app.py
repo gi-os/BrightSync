@@ -18,12 +18,19 @@ from pathlib import Path
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 
+import calendar_bridge
+
 ROOT = Path(os.environ.get("LIGHTSYNC_DIR", "/data"))
 TOKEN = os.environ.get("LIGHTSYNC_TOKEN", "")
 KEEP = int(os.environ.get("LIGHTSYNC_KEEP", "10"))
 MAX_BYTES = int(os.environ.get("LIGHTSYNC_MAX_MB", "64")) * 1024 * 1024
 
-app = FastAPI(title="LightSync")
+app = FastAPI(title="LightSync", lifespan=calendar_bridge.lifespan)
+
+# The work-calendar bridge (Microsoft 365 → one .ics the phone can fetch) rides along in
+# this container rather than in one of its own: it is the same box, the same token and the
+# same data volume, and a second service to keep running would buy nothing.
+app.include_router(calendar_bridge.router)
 
 
 def check(token: str | None) -> None:
@@ -48,7 +55,14 @@ def folder(app_id: str) -> Path:
 
 @app.get("/")
 def health():
-    return {"ok": True, "apps": sorted(p.name for p in ROOT.iterdir() if p.is_dir())}
+    # Underscore-prefixed folders are this server's own state (the calendar bridge keeps
+    # its token and .ics in one), not somebody's backup.
+    return {
+        "ok": True,
+        "apps": sorted(
+            p.name for p in ROOT.iterdir() if p.is_dir() and not p.name.startswith("_")
+        ),
+    }
 
 
 @app.put("/b/{app_id}")
