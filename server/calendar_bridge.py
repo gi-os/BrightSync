@@ -27,6 +27,7 @@ like a password, and rotate CALENDAR_SECRET if it leaks.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import hmac
 import json
 import os
@@ -37,7 +38,7 @@ from pathlib import Path
 
 import httpx
 from fastapi import APIRouter, FastAPI, Header, HTTPException
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import Response
 
 ROOT = Path(os.environ.get("LIGHTSYNC_DIR", "/data"))
 # Underscore-prefixed so app.py's health listing can tell it apart from a backed-up app.
@@ -83,7 +84,8 @@ def _write(path: Path, text: str) -> None:
     # leave a truncated .ics that the phone would then import as "most of your meetings".
     DIR.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".part")
-    tmp.write_text(text, encoding="utf-8")
+    # newline="" or Python's newline translation rewrites the CRLF that RFC 5545 requires.
+    tmp.write_text(text, encoding="utf-8", newline="")
     tmp.replace(path)
 
 
@@ -237,6 +239,23 @@ def _fold(line: str) -> str:
     return out[0] + "".join("\r\n " + c for c in out[1:])
 
 
+def _uid(event: dict, when: str) -> str:
+    """
+    A stable, unique UID per occurrence.
+
+    Graph's instance ids run well past 250 characters, and truncating them — which is what
+    this did first — made *different* occurrences of the same series share a UID, because
+    everything that distinguishes them sits at the end of the string. Observed live: 79
+    events collapsed onto 53 UIDs. Hash the whole id instead, and fold the start time in, so
+    two occurrences can never collide even if Microsoft hands back the same id twice.
+
+    Stable across refreshes, because both halves are stable — which is what keeps a
+    re-import idempotent on the phone.
+    """
+    digest = hashlib.sha1(str(event.get("id", "")).encode("utf-8")).hexdigest()[:32]
+    return f"{digest}-{when}@lightsync"
+
+
 def _stamp(value: str) -> tuple[str, bool]:
     """Graph's `2026-08-04T09:00:00.0000000` → `20260804T090000Z`, plus is-it-midnight."""
     cleaned = value.split(".")[0].rstrip("Z")
@@ -262,10 +281,13 @@ def _to_ics(events: list[dict]) -> str:
         if not start_raw:
             continue
         subject = _escape((event.get("subject") or "Event").strip()[:200])
+        when = (
+            start_raw.split("T")[0].replace("-", "")
+            if event.get("isAllDay")
+            else _stamp(start_raw)[0]
+        )
         lines.append("BEGIN:VEVENT")
-        # Graph instance ids are long and contain base64url characters, all of which are
-        # legal in a UID. Reusing them keeps re-imports idempotent on the phone side.
-        lines.append(_fold(f"UID:{event.get('id', '')[:250]}@graph"))
+        lines.append(f"UID:{_uid(event, when)}")
         lines.append(f"DTSTAMP:{written}")
         if event.get("isAllDay"):
             # All-day events come back as midnight-to-midnight; DATE values keep them off
@@ -373,8 +395,12 @@ def feed(secret: str):
         raise HTTPException(503, "nothing synced yet")
     # Served from the last good file rather than fetched on demand, so an outage at
     # Microsoft's end, or an expired refresh token, still hands the phone a calendar.
-    return PlainTextResponse(
-        ICS_FILE.read_text(encoding="utf-8"),
+    #
+    # Bytes, not text: `read_text` applies universal newline translation and quietly turned
+    # every CRLF this file writes into a bare LF, which is not what RFC 5545 says a line
+    # break is. LightNotebook's parser tolerates it; another calendar client need not.
+    return Response(
+        ICS_FILE.read_bytes(),
         media_type="text/calendar; charset=utf-8",
         headers={"Cache-Control": "no-cache"},
     )

@@ -67,6 +67,33 @@ def test_folding_survives_a_round_trip():
     assert f"SUMMARY:{long_title}" in unfolded
 
 
+def test_occurrences_of_one_series_get_different_uids():
+    # The bug this exists for: Graph instance ids run past 250 characters and differ only at
+    # the end, so truncating them made 79 real events share 53 UIDs.
+    long_id = "AAMkADRmYThkZjUxLWExYzItNDg5Mi1hMzIzLWZk" + "Q" * 300
+    a = event(id=long_id + "AAA", start={"dateTime": "2026-07-22T11:00:00.0000000"})
+    b = event(id=long_id + "BBB", start={"dateTime": "2026-07-22T14:00:00.0000000"})
+    uids = [l for l in lines([a, b]) if l.startswith("UID:")]
+    assert len(set(uids)) == 2, uids
+    # And short enough that no UID ever needs folding.
+    assert all(len(u.encode("utf-8")) <= 75 for u in uids)
+
+
+def test_the_same_event_keeps_its_uid_across_refreshes():
+    # Re-imports replace a source's events wholesale on the phone, but a UID that changed
+    # every pass would make any other client treat each refresh as a new calendar.
+    first = [l for l in lines([event()]) if l.startswith("UID:")]
+    second = [l for l in lines([event()]) if l.startswith("UID:")]
+    assert first == second
+
+
+def test_line_breaks_are_crlf():
+    # RFC 5545 says CRLF. Python's text-mode read turned these into bare LF once already.
+    out = cb._to_ics([event()])
+    assert "\r\n" in out
+    assert "\n" not in out.replace("\r\n", "")
+
+
 def test_no_rrule_is_ever_emitted():
     # calendarView hands back expanded instances; if an RRULE ever appeared here it would
     # mean the wrong endpoint was called, and the phone's parser would import one occurrence.

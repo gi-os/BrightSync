@@ -90,6 +90,19 @@ curl -s -XPOST -H "X-Token: $TOKEN" http://192.168.68.59:8099/cal/auth/start
 curl -s -H "X-Token: $TOKEN" http://192.168.68.59:8099/cal/status
 ```
 
+**Expose only the feed.** If this goes through a Cloudflare tunnel, the ingress rule needs a
+path, not just a hostname — otherwise the tunnel publishes the whole backup API and the health
+endpoint's list of app package names along with it:
+
+```
+cal.basilnet.com  path ^/cal/[0-9a-f]+/work\.ics$  ->  http://lightsync:8099
+cal.basilnet.com                                   ->  http_status:404
+```
+
+`/cal/status` and `/cal/auth/*` stay LAN-only, which is where you drive them from anyway. Use
+the container name rather than the host's LAN address if cloudflared shares a docker network
+with it — BasilNet does not answer its own LAN address from inside itself.
+
 The feed is then at `/cal/<CALENDAR_SECRET>/work.ics`, refreshed every 20 minutes, and
 served **from the last good file** — an outage at Microsoft's end, or a revoked token, still
 hands the phone the calendar it had. That URL has no header auth, because a calendar client's
