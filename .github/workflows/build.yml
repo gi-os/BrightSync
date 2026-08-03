@@ -2,6 +2,13 @@ name: Build & Release APK
 
 on:
   push:
+    # Was a bare `push:`, which released from every branch — so a feature branch or a
+    # check run published straight to the phone. Releases come from main only.
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '.github/workflows/check.yml'
+      - 'signing-fingerprint.txt'
   workflow_dispatch:
 
 permissions:
