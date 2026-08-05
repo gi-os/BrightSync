@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.gios.light.common.hw.WheelScroll
 import com.gios.lightsync.Prefs
 import com.gios.lightsync.sync.Backupable
 import com.gios.lightsync.sync.Discovery

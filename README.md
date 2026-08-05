@@ -17,10 +17,62 @@ there is no root here. So a central agent cannot back anything up on its own; th
 offered. LightSync is therefore a pair: an agent that owns everything changeable, and a ~10-line
 provider inside each app that hands over bytes.
 
+That provider used to live here as `module/LightSyncBackup.kt`, a template you pasted in with the
+package name swapped. It is now a class in **light-common**, which is where the sixteen copies
+should have been all along — they had already drifted, and only two of them ever learned to
+report a label.
+
 That split is the whole design. The server address, the schedule, the encryption, the retention
 and the restore UI all live in the agent, so none of them can ever force a release of sixteen
 apps. And apps are *discovered* — anything publishing a `*.lightsync.backup` provider is in — so
 adding the seventeenth app doesn't touch the agent either.
+
+## Joining
+
+```kotlin
+// app/src/main/kotlin/.../backup/Backup.kt
+class Backup : LightSyncBackup() {
+    override fun label() = "Tip"
+    override fun stores() = listOf(
+        FileStore("settings", Contents(prefs = listOf("lighttip"))),
+        FileStore("bills", Contents(databases = listOf("lighttip.db"))),
+    )
+}
+```
+
+```xml
+<provider
+    android:name=".backup.Backup"
+    android:authorities="${applicationId}.lightsync.backup"
+    android:exported="true" />
+```
+
+`implementation("com.gios:light-common:1.2.1")`, and that is the whole of it. The authority
+suffix is the registration.
+
+**One store per subsystem, not one flat list.** LightNotebook is notes and a calendar and day
+data; each has a different answer to "could another install open these bytes?". Under one list an
+app had to pick the worst answer for all of them.
+
+**Anything sealed with an AndroidKeyStore key needs a `LogicalStore`, not a `FileStore`.** That
+key cannot leave the device and does not survive a factory reset, so copying the ciphertext gives
+you a backup that restores cleanly and decrypts to nothing — worse than no backup, because it
+looks like one. A `LogicalStore` gets a stream out and a stream in and writes something portable.
+LightChat does this for its BlueBubbles password; LightRemote did not need to, because its
+pairing keys are plain preferences.
+
+## The fleet screen
+
+The second tab lists every app on the phone that has offered itself, with the version it is
+running, the version of light-common it was built against, what its backup would contain, and how
+long ago it last went up.
+
+The library column is the one that earns its place. Nearly every bug that turned out to span
+apps was one app carrying an older copy of the shared code, and finding that out previously meant
+opening twenty repositories. Every value comes from the app itself over the same provider used
+for backups — nothing is fetched from GitHub — so the screen describes the phone in your hand and
+not the state of a branch. An app that is installed but will not answer is listed too, dimmed,
+because that is the row most worth seeing.
 
 ## Encryption
 

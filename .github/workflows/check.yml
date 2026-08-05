@@ -15,6 +15,10 @@ concurrency:
   group: check-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -29,9 +33,23 @@ jobs:
 
       - name: Unit tests
         run: ./gradlew :app:testDebugUnitTest --stacktrace
+        env:
+          # Resolving light-common from GitHub Packages, which has no anonymous read. GPR_TOKEN
+          # overrides when a dedicated secret exists; otherwise the run's own token is enough,
+          # but it has to be passed explicitly — Gradle does not see it on its own.
+          GPR_USER: ${{ secrets.GPR_USER }}
+          GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Compile
         run: ./gradlew :app:assembleDebug --stacktrace
+        env:
+          # Resolving light-common from GitHub Packages, which has no anonymous read. GPR_TOKEN
+          # overrides when a dedicated secret exists; otherwise the run's own token is enough,
+          # but it has to be passed explicitly — Gradle does not see it on its own.
+          GPR_USER: ${{ secrets.GPR_USER }}
+          GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

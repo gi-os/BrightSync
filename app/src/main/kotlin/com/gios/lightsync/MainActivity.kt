@@ -5,52 +5,94 @@ import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Modifier
+import com.gios.light.common.hw.LightKey
+import com.gios.light.common.hw.LightKeys
+import com.gios.light.common.hw.LocalWheelBus
+import com.gios.light.common.hw.WheelBus
 import com.gios.lightsync.ui.AppsScreen
+import com.gios.lightsync.ui.FleetScreen
 import com.gios.lightsync.ui.SetupScreen
+import com.gios.lightsync.ui.TabBar
 import com.gios.lightsync.ui.theme.LightSyncTheme
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 
 class MainActivity : ComponentActivity() {
 
-    private val notches = MutableSharedFlow<Int>(extraBufferCapacity = 64)
+    private val wheel = WheelBus()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             LightSyncTheme {
-                CompositionLocalProvider(LocalNotches provides notches.asSharedFlow()) {
-                    var setup by remember { mutableStateOf(false) }
-                    BackHandler(enabled = setup) { setup = false }
-                    if (setup) {
-                        SetupScreen(onBack = { setup = false })
-                    } else {
-                        AppsScreen(onSetup = { setup = true })
-                    }
+                CompositionLocalProvider(LocalWheelBus provides wheel) {
+                    Root()
                 }
             }
         }
     }
 
-    /** The wheel scrolls, as it does in the rest of the family. See LightControl. */
+    /**
+     * Two tabs and a settings screen stacked over them.
+     *
+     * Setup is not a third tab. It is entered from the Apps tab, it is the only screen here that
+     * changes anything on the server, and giving it equal billing at the bottom of the screen
+     * would put a destructive edit one stray thumb away from a list you scroll every day.
+     */
+    @Composable
+    private fun Root() {
+        var tab by remember { mutableIntStateOf(0) }
+        var setup by remember { mutableStateOf(false) }
+        BackHandler(enabled = setup) { setup = false }
+
+        if (setup) {
+            SetupScreen(onBack = { setup = false })
+            return
+        }
+
+        Column(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f)) {
+                when (tab) {
+                    0 -> AppsScreen(onSetup = { setup = true })
+                    else -> FleetScreen()
+                }
+            }
+            TabBar(selected = tab, labels = listOf("APPS", "FLEET"), onSelect = { tab = it })
+        }
+    }
+
+    /**
+     * The wheel scrolls, as it does in the rest of the family.
+     *
+     * This used to be a hand-rolled scancode check. `LightKeys` is the same logic with the two
+     * fallbacks in the right order — resolve Light's own key label first, and only trust the raw
+     * scancode when it came from one of the two devices that physically own these controls, so a
+     * paired Bluetooth keyboard's `r` cannot scroll the list.
+     *
+     * Only the two wheel directions are consumed. The wheel click and the camera button belong
+     * to LightControl, and swallowing them here would take them away from it.
+     */
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        val code = event.keyCode
-        val scan = event.scanCode
-        val up = code == KeyEvent.keyCodeFromString("WHEEL_CCW") || scan == 19
-        val down = code == KeyEvent.keyCodeFromString("WHEEL_CW") || scan == 20
-        if ((up || down) && event.device?.name == "Pixart pat9126ja") {
-            if (event.action == KeyEvent.ACTION_DOWN) notches.tryEmit(if (up) 1 else -1)
-            return true
+        when (LightKeys.of(event)) {
+            LightKey.WheelUp -> {
+                if (event.action == KeyEvent.ACTION_DOWN) wheel.send(1)
+                return true
+            }
+            LightKey.WheelDown -> {
+                if (event.action == KeyEvent.ACTION_DOWN) wheel.send(-1)
+                return true
+            }
+            else -> Unit
         }
         return super.dispatchKeyEvent(event)
     }
 }
-
-val LocalNotches = staticCompositionLocalOf<SharedFlow<Int>?> { null }

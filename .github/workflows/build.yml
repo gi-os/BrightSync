@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: write
+  packages: read
 
 jobs:
   build:
@@ -41,6 +42,13 @@ jobs:
 
       - name: Build APKs
         run: ./gradlew :app:assembleDebug :app:assembleRelease --stacktrace
+        env:
+          # Resolving light-common from GitHub Packages, which has no anonymous read. GPR_TOKEN
+          # overrides when a dedicated secret exists; otherwise the run's own token is enough,
+          # but it has to be passed explicitly — Gradle does not see it on its own.
+          GPR_USER: ${{ secrets.GPR_USER }}
+          GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Collect APK
         run: |

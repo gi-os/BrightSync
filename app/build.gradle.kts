@@ -15,7 +15,7 @@ android {
         targetSdk = 35
         // CI overwrites both from the workflow run number; see .github/workflows/build.yml
         versionCode = 1
-        versionName = "1.1.1"
+        versionName = "1.2.0"
 
         // The LPIII is arm64 only; shipping four ABIs tripled the APK for nothing.
         ndk { abiFilters += "arm64-v8a" }
@@ -32,7 +32,11 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // On for the first time in this app. The agent is small, but it is also the app
+            // that has to still work when everything else on the phone is broken, so the
+            // keep rules in proguard-rules.pro are written out rather than inherited.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             // Same committed key as debug, so either APK upgrades over the other.
             signingConfig = signingConfigs.getByName("debug")
@@ -47,6 +51,11 @@ android {
 }
 
 dependencies {
+    // The wheel, and the SyncMeta keys the fleet screen reads out of each app's provider.
+    // The agent compiling against the same constants as the apps is the only thing keeping
+    // the two sides of an untyped ContentResolver.call in step.
+    implementation("com.gios:light-common:1.2.1")
+
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)
     implementation("androidx.core:core-ktx:1.15.0")
@@ -61,4 +70,11 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.10.0")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+
+    // Installs the baseline profile light-common ships in its AAR. Without this the profile is
+    // packaged and never used: below API 31 nothing reads one on its own.
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+
+    // Version ordering on the fleet screen is plain arithmetic, so it runs here.
+    testImplementation("junit:junit:4.13.2")
 }
