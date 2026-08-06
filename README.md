@@ -1,4 +1,4 @@
-# LightSync
+# BrightSync
 
 Backups for the LightX apps, onto BasilNet. One app to set up, one container to run, and a file
 per app to opt in.
@@ -14,7 +14,7 @@ per app to opt in.
 
 Android's sandbox does not let one app read another's private data — no permission grants it, and
 there is no root here. So a central agent cannot back anything up on its own; the data has to be
-offered. LightSync is therefore a pair: an agent that owns everything changeable, and a ~10-line
+offered. BrightSync is therefore a pair: an agent that owns everything changeable, and a ~10-line
 provider inside each app that hands over bytes.
 
 That provider used to live here as `module/LightSyncBackup.kt`, a template you pasted in with the
@@ -50,7 +50,7 @@ class Backup : LightSyncBackup() {
 `implementation("com.gios:light-common:1.2.1")`, and that is the whole of it. The authority
 suffix is the registration.
 
-**One store per subsystem, not one flat list.** LightNotebook is notes and a calendar and day
+**One store per subsystem, not one flat list.** BrightNotebook is notes and a calendar and day
 data; each has a different answer to "could another install open these bytes?". Under one list an
 app had to pick the worst answer for all of them.
 
@@ -58,7 +58,7 @@ app had to pick the worst answer for all of them.
 key cannot leave the device and does not survive a factory reset, so copying the ciphertext gives
 you a backup that restores cleanly and decrypts to nothing — worse than no backup, because it
 looks like one. A `LogicalStore` gets a stream out and a stream in and writes something portable.
-LightChat does this for its BlueBubbles password; LightRemote did not need to, because its
+BrightChat does this for its BlueBubbles password; BrightRemote did not need to, because its
 pairing keys are plain preferences.
 
 ## The fleet screen
@@ -109,13 +109,13 @@ never decrypts anything and has no idea what it is holding. Bound to the LAN add
 
 `server/calendar_bridge.py` rides along in the same container: Microsoft 365 in, one plain
 `.ics` out, so a Light Phone III can carry a work calendar without any of Microsoft's
-machinery on the phone. The phone's only job is a GET on a URL — see LightNotebook's
+machinery on the phone. The phone's only job is a GET on a URL — see BrightNotebook's
 "Subscribe to a URL".
 
 It exists here rather than on the phone for three reasons. There is no usable OAuth library
 on LightOS (MSAL and AppAuth both fail the "full browser" test that killed LightNews'
 first attempt). A corporate refresh token has no good home on a sideloaded app. And
-LightNotebook's `IcsParser` deliberately does not expand `RRULE`, so a raw Outlook export
+BrightNotebook's `IcsParser` deliberately does not expand `RRULE`, so a raw Outlook export
 would show a weekly standup exactly once — whereas Graph's `calendarView` returns
 *instances*, already expanded, which is what this writes out.
 
@@ -182,13 +182,13 @@ class Backup : LightSyncBackup() {
 **But not always.** If an app's stored form can't be read anywhere else — anything wrapped with an
 AndroidKeyStore key, which by design never leaves the device — backing up the files produces
 something that restores into nothing. Those apps override `export`/`restore` and emit a portable
-payload instead. LightAuth is the worked example: it exports `otpauth://` URIs rather than its
+payload instead. BrightAuthenticator is the worked example: it exports `otpauth://` URIs rather than its
 database, because the database holds secrets encrypted with a key that dies with the phone.
 
 ## The trust boundary, stated plainly
 
 Each LightX app is signed with its own keystore, so a `signature`-level permission can't match
-across them. Instead each provider requires the caller to be LightSync by package **and** by
+across them. Instead each provider requires the caller to be BrightSync by package **and** by
 signing certificate, pinned in the module as a SHA-256 digest. A hostile app can claim the package
 name only by also holding the key. That is weaker than a platform permission and stronger than a
 name check, and on a phone whose only installer is you it's a reasonable trade — written down here

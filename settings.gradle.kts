@@ -26,5 +26,5 @@ dependencyResolutionManagement {
         }
     }
 }
-rootProject.name = "LightSync"
+rootProject.name = "BrightSync"
 include(":app")
