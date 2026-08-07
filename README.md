@@ -3,6 +3,17 @@
 Backups for the LightX apps, onto BasilNet. One app to set up, one container to run, and a file
 per app to opt in.
 
+## Install via BrightMarket
+
+<p align="center">
+  <img src="https://gi-os.github.io/brightmarket-index/assets/brightmarket-qr.png" alt="Scan to open BrightMarket" width="180" />
+</p>
+
+Scan the code above, or visit
+**[gi-os.github.io/brightmarket-index/browse.html](https://gi-os.github.io/brightmarket-index/browse.html)**, to install
+and keep this app updated through **BrightMarket** — no Play Store, no PC
+required.
+
 | | |
 |---|---|
 | **Where it goes** | BasilNet, over the LAN, as one encrypted blob per app |
