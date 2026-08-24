@@ -195,12 +195,18 @@ accept-or-reject for a batch of SHA-1s in one small request, and only the accept
 uploaded. Immich would reject the duplicates anyway — it hashes what it receives — but only after
 the phone had pushed the file across the wifi to be told so.
 
-**Fifty frames a pass, and the pass resumes.** A week away shooting is hundreds of files and
-gigabytes; WorkManager will not hold a job open for that. So a run takes fifty, and if more are
-waiting it queues another for ten minutes' time rather than for tomorrow. The watermark is
-`DATE_MODIFIED` of the last frame that got through — a hint about where to start reading, no
-more. Whether a frame goes up is answered by Immich against its own index, so a reset watermark
-costs some hashing and uploads nothing twice.
+**A tap uploads all of it.** Fifty frames is a batch — one bulk-check, and a bounded amount of
+hashing to lose if the wifi drops mid-pass — but it is a unit of work rather than a cap. Tapping
+*Back up the roll* keeps taking batches until the roll is on the server, counting up as it goes.
+
+The background run is the one with a limit, and the limit is time rather than count: WorkManager
+stops a worker that runs long, so the daily pass spends nine minutes and queues a catch-up a
+minute later if anything is left. A week away shooting drains in a few of those instead of a
+fortnight of daily fifties.
+
+The watermark is `DATE_MODIFIED` of the last frame that got through — a hint about where to start
+reading, no more. Whether a frame goes up is answered by Immich against its own index, so a reset
+watermark costs some hashing and uploads nothing twice.
 
 **Nothing is deleted, ever.** A pass only ever adds. Clearing space on the phone is a decision
 made in Roll, not a side effect of a backup, and there is no photo restore: Immich is a photo

@@ -27,10 +27,15 @@ data class PhotoRun(val uploaded: Int, val alreadyThere: Int, val remaining: Int
  * a restored phone, a re-dated file, or a watermark reset costs a batch of hashing and uploads
  * nothing twice.
  *
- * **One batch at a time.** A roll shot over a week away from home is hundreds of files and
- * gigabytes. WorkManager will not hold a job open for that, and the phone should not be warm all
- * evening, so a run takes [BATCH] frames and leaves the rest for the next one — which is minutes
- * later while there is more waiting, not tomorrow. See [SyncWorker].
+ * **A tap means all of it.** [runAll] keeps taking batches until the roll is on the server. The
+ * batch is still fifty, because that is one bulk-check and a bounded amount of hashing to lose
+ * if the wifi drops mid-pass — but it is a unit of work, not a limit on the answer. Asking a
+ * phone with four hundred new frames to be tapped eight times was a bug wearing a design's
+ * clothes.
+ *
+ * The background run is the one with a limit, and the limit is time rather than count:
+ * WorkManager will stop a worker that runs long, so [runAll] takes a budget and stops cleanly
+ * inside it, leaving the rest for a catch-up run a minute later. See [SyncWorker].
  */
 class Photos(private val context: Context) {
 
@@ -107,9 +112,46 @@ class Photos(private val context: Context) {
         return PhotoRun(uploaded, skipped, Roll.pending(context, reached))
     }
 
+    /**
+     * Keep going until the roll is up, or until [budgetMs] of wall clock has gone.
+     *
+     * [onProgress] is called after every pass so a screen can count up while it works; it runs
+     * on whatever thread called this, which is an IO one.
+     *
+     * A pass that uploads nothing and clears nothing ends the loop rather than repeating it.
+     * That is the shape of every runaway-loop bug this could have — a frame the server keeps
+     * accepting and never storing, a watermark that will not advance — and spinning on it would
+     * cost the battery of a phone in someone's pocket.
+     */
+    fun runAll(budgetMs: Long = Long.MAX_VALUE, onProgress: (PhotoRun) -> Unit = {}): PhotoRun {
+        val started = System.currentTimeMillis()
+        var uploaded = 0
+        var skipped = 0
+        var last: PhotoRun
+        while (true) {
+            val before = prefs.photoMark
+            last = run()
+            uploaded += last.uploaded
+            skipped += last.alreadyThere
+            onProgress(PhotoRun(uploaded, skipped, last.remaining))
+            val stuck = last.uploaded == 0 && last.alreadyThere == 0 && prefs.photoMark == before
+            if (last.remaining <= 0 || stuck) break
+            if (System.currentTimeMillis() - started >= budgetMs) break
+        }
+        return PhotoRun(uploaded, skipped, last.remaining)
+    }
+
     companion object {
-        /** Frames per pass. Fifty full-size files is a couple of minutes on the home wifi. */
+        /** Frames per pass — the unit of work, not a cap. See [runAll]. */
         const val BATCH = 50
+
+        /**
+         * How long the daily run may spend on photographs before leaving the rest to a catch-up.
+         *
+         * WorkManager gives a worker ten minutes before it is stopped, and a worker killed
+         * mid-upload loses the pass it was in. Nine leaves room to finish the frame in flight.
+         */
+        const val BACKGROUND_BUDGET_MS = 9L * 60 * 1000
 
         /** Checksums per bulk-check request. Immich takes far more; this keeps the body small. */
         const val CHECK_BATCH = 100

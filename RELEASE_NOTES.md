@@ -66,10 +66,15 @@ This is the one payload that needed no cooperation from the app that made it. Ro
 grant. Nothing was added to light-common and no other repository changed. BrightImport's frames,
 pulled off a real camera over its wifi, go up the same way without either app knowing.
 
-### Fifty at a time, and it resumes
+### A tap uploads the whole roll
 
-A week away shooting is hundreds of files. A pass takes fifty frames, and if more are waiting it
-queues another run for ten minutes' time instead of tomorrow. The watermark is the last frame that
+Fifty frames is a batch, not an answer. Tapping *Back up the roll* now keeps going until the roll
+is on the server, counting up while it works — a phone with four hundred new frames asking to be
+tapped eight times was a bug wearing a design's clothes.
+
+The background run keeps a limit, because WorkManager stops a worker that runs long, but the
+limit is time: nine minutes, then a catch-up queued a minute later if anything is left. A week
+away shooting drains in a few of those rather than a fortnight of daily fifties. The watermark is the last frame that
 got through, and it is only a hint about where to start reading — Immich answers on checksums, so
 a reset watermark costs some hashing and re-uploads nothing. Nothing is ever deleted from the
 phone by a pass.

@@ -41,14 +41,14 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         val photos = if (prefs.wantsPhotos && prefs.photosReady && prefs.photosAuto &&
             Roll.granted(applicationContext)
         ) {
-            runCatching { Photos(applicationContext).run() }
+            runCatching { Photos(applicationContext).runAll(Photos.BACKGROUND_BUDGET_MS) }
         } else {
             null
         }
 
-        // More frames waiting than one pass takes: come back in a few minutes rather than
-        // tomorrow. A week away shooting is hundreds of files, and a job that ran once a day
-        // would take a fortnight to catch up on it.
+        // Still frames waiting when the budget ran out: come back at once rather than tomorrow.
+        // A week away shooting is hundreds of files and several gigabytes; a job that ran daily
+        // would take a fortnight to catch up, and one that stopped after fifty never would.
         photos?.getOrNull()?.let { run ->
             if (run.remaining > 0) catchUp(applicationContext)
         }
@@ -86,12 +86,14 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
          *
          * `KEEP` rather than `REPLACE`, so a pass that finishes while a catch-up is already
          * queued does not keep pushing the queued one further out — which is the shape of bug
-         * that leaves a backlog permanently ten minutes away from starting.
+         * that leaves a backlog permanently a minute away from starting.
          */
         fun catchUp(context: Context) {
             val request = OneTimeWorkRequestBuilder<SyncWorker>()
                 .setConstraints(onWifi())
-                .setInitialDelay(10, TimeUnit.MINUTES)
+                // Long enough that a phone which just left the house is not retried on the
+                // doorstep, short enough that a backlog is measured in hours rather than days.
+                .setInitialDelay(1, TimeUnit.MINUTES)
                 .setInputData(workDataOf(PHOTOS_ONLY to true))
                 .build()
             WorkManager.getInstance(context).enqueueUniqueWork(

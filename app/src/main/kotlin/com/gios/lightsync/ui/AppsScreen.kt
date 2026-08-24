@@ -157,12 +157,26 @@ fun AppsScreen(onSetup: () -> Unit) {
                                     status = null
                                     scope.launch {
                                         val result = withContext(Dispatchers.IO) {
-                                            runCatching { Photos(context).run() }
+                                            // The whole roll, not one batch. Progress is written
+                                            // straight from the IO thread: snapshot state takes
+                                            // a write from anywhere, and a screen that counts up
+                                            // is the difference between "working" and "hung" on
+                                            // a job that can last twenty minutes.
+                                            runCatching {
+                                                Photos(context).runAll { run ->
+                                                    status = "sent ${run.uploaded} · " +
+                                                        "${run.remaining} to go"
+                                                }
+                                            }
                                         }
                                         busy = false
                                         status = result.fold(
                                             onSuccess = { run ->
-                                                "sent ${run.uploaded}, ${run.remaining} to go"
+                                                if (run.remaining > 0) {
+                                                    "sent ${run.uploaded}, ${run.remaining} left"
+                                                } else {
+                                                    "sent ${run.uploaded} — the roll is up"
+                                                }
                                             },
                                             onFailure = { it.message ?: "failed" },
                                         )
