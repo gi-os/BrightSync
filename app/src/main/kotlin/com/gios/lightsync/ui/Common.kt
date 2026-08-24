@@ -18,8 +18,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -36,6 +38,27 @@ fun barColors() = TopAppBarDefaults.topAppBarColors(
     navigationIconContentColor = Color.White,
     actionIconContentColor = Color.White,
 )
+
+/**
+ * Hold the screen awake while [enabled].
+ *
+ * An upload of four hundred frames is twenty minutes of work, and the phone's screen timeout is
+ * thirty seconds. Sleeping does not stop the coroutine outright, but a backgrounded process gets
+ * throttled and the socket eventually goes with it — so a roll left uploading on the counter
+ * would come back half done, having looked like it was running the whole time.
+ *
+ * Set on the composition's own view rather than on the window, so it is released when this
+ * screen leaves and cannot outlive the work: a stray `FLAG_KEEP_SCREEN_ON` on the window is a
+ * phone that never sleeps again until it is force-stopped.
+ */
+@Composable
+fun KeepScreenOn(enabled: Boolean) {
+    val view = LocalView.current
+    DisposableEffect(enabled) {
+        view.keepScreenOn = enabled
+        onDispose { view.keepScreenOn = false }
+    }
+}
 
 @Composable
 fun Rule(modifier: Modifier = Modifier) =

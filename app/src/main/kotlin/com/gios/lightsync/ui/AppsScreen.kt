@@ -83,6 +83,10 @@ fun AppsScreen(onSetup: () -> Unit) {
     val listState = rememberLazyListState()
     WheelScroll(listState)
 
+    // Both verbs on this screen can run for a long time — a roll is twenty minutes, an app's
+    // blob is seconds — and neither survives the phone being allowed to sleep on the counter.
+    KeepScreenOn(busy)
+
     Scaffold(
         containerColor = Color.Black,
         topBar = {
