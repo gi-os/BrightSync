@@ -66,6 +66,16 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
 
+    // Reading the setup code off a screen. CameraX for the frames — core, camera2 for the
+    // backend, lifecycle to bind it, view for the PreviewView — and ZXing to decode. ZXing
+    // rather than ML Kit is not a preference: ML Kit's barcode reader arrives through Play
+    // Services, which LightOS does not have, so it would bind and never answer.
+    implementation("androidx.camera:camera-core:1.4.1")
+    implementation("androidx.camera:camera-camera2:1.4.1")
+    implementation("androidx.camera:camera-lifecycle:1.4.1")
+    implementation("androidx.camera:camera-view:1.4.1")
+    implementation("com.google.zxing:core:3.5.3")
+
     // Background sync. WorkManager sits on JobScheduler, so it needs no Play Services.
     implementation("androidx.work:work-runtime-ktx:2.10.0")
 

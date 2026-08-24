@@ -22,6 +22,13 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 
+    <!--
+      Only ever the setup code. The camera is opened by one screen, for as long as that screen
+      is on top, with nothing bound that could capture a frame to disk — see ui/ScanScreen.kt.
+    -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+
     <application
         android:name=".SyncApp"
         android:allowBackup="false"

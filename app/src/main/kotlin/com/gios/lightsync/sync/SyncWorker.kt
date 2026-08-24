@@ -32,13 +32,15 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         val prefs = Prefs(applicationContext)
         val photosOnly = inputData.getBoolean(PHOTOS_ONLY, false)
 
-        val apps = if (photosOnly || !prefs.ready || !prefs.autoDaily) {
+        val apps = if (photosOnly || !prefs.wantsBlobs || !prefs.ready || !prefs.autoDaily) {
             null
         } else {
             runCatching { Vault(applicationContext).backupAll() }
         }
 
-        val photos = if (prefs.photosReady && prefs.photosAuto && Roll.granted(applicationContext)) {
+        val photos = if (prefs.wantsPhotos && prefs.photosReady && prefs.photosAuto &&
+            Roll.granted(applicationContext)
+        ) {
             runCatching { Photos(applicationContext).run() }
         } else {
             null

@@ -99,7 +99,7 @@ fun AppsScreen(onSetup: () -> Unit) {
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
             LazyColumn(Modifier.fillMaxSize(), state = listState) {
-                item {
+                if (prefs.wantsBlobs) item {
                     MenuRow(
                         label = if (busy) "Backing up…" else "Back up everything",
                         detail = "${apps.size}",
@@ -128,7 +128,7 @@ fun AppsScreen(onSetup: () -> Unit) {
                     Rule()
                 }
 
-                item {
+                if (prefs.wantsPhotos) item {
                     // The roll is the one row here that does not go into a blob. It is on this
                     // screen and not behind a third tab because it is the same verb — send what
                     // is new to BasilNet — and because a gigabyte of photographs waiting on the
@@ -175,7 +175,7 @@ fun AppsScreen(onSetup: () -> Unit) {
                     Rule()
                 }
 
-                items(apps, key = { it.pkg }) { app ->
+                items(if (prefs.wantsBlobs) apps else emptyList(), key = { it.pkg }) { app ->
                     val confirm = confirming == app.pkg
                     MenuRow(
                         label = app.label,

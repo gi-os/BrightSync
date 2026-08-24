@@ -2,6 +2,22 @@
 
 Photographs were under "Not doing" for two releases. They are in now, and not as blobs.
 
+### Setup is a QR code now
+
+`/enroll/<token>` on the container renders the phone's whole configuration as a code: server,
+token, Immich, album. Scan it and the phone is set up. The passphrase stays out of it unless you
+set `ENROLL_PASSPHRASE` — it is the one value the server does not hold, and holding it would cost
+the property the blob store exists for. The page says plainly which of the two it is showing.
+
+A first launch with nothing configured now walks four steps instead of opening onto a wall of
+empty fields, and **photos only** is one of the answers: Immich needs no blob store and no
+passphrase, so that path is two taps and no typing. Backups only works the same way in reverse,
+and neither half nags the front screen about a server you deliberately skipped.
+
+Scanning is ZXing over a CameraX stream, ported from Roll along with its row-stride fix. The
+camera is bound by one screen, for as long as that screen is up, with nothing attached that could
+write a frame anywhere.
+
 ### Immich, on the same box
 
 `server/immich` stands up Immich next to the LightSync container: the library and its Postgres on

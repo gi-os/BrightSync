@@ -47,7 +47,7 @@ import kotlinx.coroutines.withContext
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SetupScreen(onBack: () -> Unit) {
+fun SetupScreen(onBack: () -> Unit, onScan: () -> Unit = {}) {
     val context = LocalContext.current
     val prefs = remember { Prefs(context) }
 
@@ -59,6 +59,7 @@ fun SetupScreen(onBack: () -> Unit) {
     var immichKey by remember { mutableStateOf(prefs.immichKey) }
     var album by remember { mutableStateOf(prefs.immichAlbum) }
     var photosAuto by remember { mutableStateOf(prefs.photosAuto) }
+    var mode by remember { mutableStateOf(prefs.mode) }
     var editing by remember { mutableStateOf<String?>(null) }
     var reachable by remember { mutableStateOf<Boolean?>(null) }
     var immichUp by remember { mutableStateOf<Boolean?>(null) }
@@ -97,6 +98,36 @@ fun SetupScreen(onBack: () -> Unit) {
         },
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize().verticalScroll(scroll)) {
+            SectionLabel("SETUP CODE")
+            MenuRow(
+                label = "Scan a code",
+                detail = "QR",
+                sub = "Open /enroll/<token> on BasilNet and point the phone at it. Everything " +
+                    "below arrives at once.",
+                onClick = onScan,
+            )
+            Rule()
+
+            SectionLabel("WHAT THIS PHONE SENDS")
+            MenuRow(
+                label = when (mode) {
+                    Prefs.MODE_PHOTOS -> "Photos only"
+                    Prefs.MODE_BACKUPS -> "Backups only"
+                    else -> "Everything"
+                },
+                detail = "CHANGE",
+                sub = "Tap to cycle. Either half works without the other.",
+                onClick = {
+                    mode = when (mode) {
+                        Prefs.MODE_EVERYTHING -> Prefs.MODE_PHOTOS
+                        Prefs.MODE_PHOTOS -> Prefs.MODE_BACKUPS
+                        else -> Prefs.MODE_EVERYTHING
+                    }
+                    prefs.mode = mode
+                },
+            )
+            Rule()
+
             SectionLabel("BASILNET")
             MenuRow(
                 label = "Server",

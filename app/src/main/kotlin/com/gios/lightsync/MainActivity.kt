@@ -21,6 +21,8 @@ import com.gios.light.common.hw.LightKeys
 import com.gios.light.common.hw.LocalWheelBus
 import com.gios.light.common.hw.WheelBus
 import com.gios.lightsync.ui.AppsScreen
+import com.gios.lightsync.ui.FirstRunScreen
+import com.gios.lightsync.ui.ScanScreen
 import com.gios.lightsync.ui.FleetScreen
 import com.gios.lightsync.ui.SetupScreen
 import com.gios.lightsync.ui.TabBar
@@ -50,12 +52,42 @@ class MainActivity : ComponentActivity() {
      */
     @Composable
     private fun Root() {
+        val prefs = remember { Prefs(this) }
         var tab by remember { mutableIntStateOf(0) }
         var setup by remember { mutableStateOf(false) }
-        BackHandler(enabled = setup) { setup = false }
+        // Shown on a phone that has neither half working and has not been walked through once.
+        // Deliberately not "shown until configured": a phone that was set up and then had its
+        // server taken away needs the error on the front screen, not a wizard over the top of it.
+        var firstRun by remember { mutableStateOf(!prefs.setupDone && !prefs.configured) }
+        var scanning by remember { mutableStateOf(false) }
+        BackHandler(enabled = setup || scanning) {
+            if (scanning) scanning = false else setup = false
+        }
+
+        if (scanning) {
+            ScanScreen(
+                onScanned = { enrollment ->
+                    enrollment.applyTo(prefs)
+                    scanning = false
+                },
+                onManual = { scanning = false },
+            )
+            return
+        }
+
+        if (firstRun) {
+            FirstRunScreen(
+                onManual = {
+                    firstRun = false
+                    setup = true
+                },
+                onDone = { firstRun = false },
+            )
+            return
+        }
 
         if (setup) {
-            SetupScreen(onBack = { setup = false })
+            SetupScreen(onBack = { setup = false }, onScan = { scanning = true })
             return
         }
 

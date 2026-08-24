@@ -116,6 +116,33 @@ Three routes, ten versions kept per app, files on disk under `data/<package>/<ep
 never decrypts anything and has no idea what it is holding. Bound to the LAN address rather than
 `0.0.0.0` as a reminder that the token's backup is the network.
 
+## Setting a phone up
+
+Six values, two of them long random strings, thumbed into a phone whose keyboard is the size of
+a stamp — and a typo in any of them surfaces as a 401 the following day rather than as an error
+at the time. So the server draws them instead:
+
+```bash
+open http://192.168.68.59:8099/enroll/$LIGHTSYNC_TOKEN
+```
+
+That page is a QR code and the four steps in order. On the phone: **SCAN A CODE**, point it at
+the screen, and the server address, the token, Immich and the album arrive together. The scanner
+is ZXing over a CameraX stream — ML Kit's reader comes through Play Services, which LightOS does
+not have, so it would bind and never answer.
+
+The page has three variants, and *Photos only* is a real answer rather than a lesser one: Immich
+needs no blob store and no passphrase, so a phone set up that way types nothing at all.
+
+**The passphrase is not in the code by default.** It is the one secret this server does not hold,
+and the reason it cannot read your backups; the phone asks for it once after the scan. Setting
+`ENROLL_PASSPHRASE` puts it in the QR and finishes setup in one scan — and means the container
+can decrypt every blob on its disk. The page says which of the two you are looking at.
+
+A first launch that finds nothing configured walks the same path: what this phone should send,
+scan, passphrase, access to the roll. Every step is skippable and the settings screen still does
+everything the guide does — the order is only the order in which the values become useful.
+
 ## Photographs
 
 The roll goes to **Immich** on the same box, and it is the one payload here that is not
@@ -273,6 +300,7 @@ that never ran, so the last failure sits on the front screen until a run succeed
 
 ```
 server/app.py            three routes, retention, no crypto
+server/enroll.py         the setup page: one QR, and what it does and does not carry
 server/immich/           the photo library: compose, external libraries, Quick Sync
 server/calendar_bridge.py Microsoft Graph → one .ics the phone can GET
 module/LightSyncBackup.kt the per-app contribution: zip, restore, caller check
@@ -283,6 +311,9 @@ sync/Vault.kt            one backup or one restore, end to end
 sync/Immich.kt           the photo path: bulk-check, multipart upload, albums
 sync/Roll.kt             DCIM through MediaStore, and the SHA-1 Immich dedupes on
 sync/Photos.kt           one resumable pass over the roll
+sync/Enrollment.kt       the scanned URI, parsed and applied
+qr/QrAnalyzer.kt         ZXing over a CameraX stream, ported from Roll
+ui/FirstRunScreen.kt     the guided setup, and the photos-only path through it
 sync/SyncWorker.kt       daily, unmetered
 ui/AppsScreen.kt         what's backed up, when, and the two verbs
 ui/SetupScreen.kt        server, token, passphrase, reachability

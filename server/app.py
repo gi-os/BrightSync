@@ -19,6 +19,7 @@ from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 
 import calendar_bridge
+import enroll
 
 ROOT = Path(os.environ.get("LIGHTSYNC_DIR", "/data"))
 TOKEN = os.environ.get("LIGHTSYNC_TOKEN", "")
@@ -31,6 +32,11 @@ app = FastAPI(title="LightSync", lifespan=calendar_bridge.lifespan)
 # this container rather than in one of its own: it is the same box, the same token and the
 # same data volume, and a second service to keep running would buy nothing.
 app.include_router(calendar_bridge.router)
+
+# Setting a phone up by pointing it at a screen. Same reasoning again: it needs this process's
+# token and the Immich address, and a second service to hold the same two values would be a
+# second place for them to drift.
+app.include_router(enroll.router)
 
 
 def check(token: str | None) -> None:

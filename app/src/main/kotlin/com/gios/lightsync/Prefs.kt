@@ -16,6 +16,12 @@ class Prefs(context: Context) {
 
     private val sp = context.getSharedPreferences("lightsync", Context.MODE_PRIVATE)
 
+    companion object {
+        const val MODE_EVERYTHING = "everything"
+        const val MODE_PHOTOS = "photos"
+        const val MODE_BACKUPS = "backups"
+    }
+
     var server: String
         get() = sp.getString("server", "").orEmpty()
         set(v) = sp.edit().putString("server", v.trim().trimEnd('/')).apply()
@@ -83,6 +89,30 @@ class Prefs(context: Context) {
     fun photoCount(): Int = sp.getInt("photoCount", 0)
 
     fun addPhotoCount(n: Int) = sp.edit().putInt("photoCount", photoCount() + n).apply()
+
+    // ---------------------------------------------------------------- what this phone does
+    //
+    // The two halves are independent, and a phone is allowed to want only one of them. Immich
+    // needs no blob store and no passphrase, so "photos only" is two taps and no typing; a
+    // phone with no camera worth backing up can take the other half alone. The mode exists so
+    // that neither half nags on the front screen about a server the owner deliberately skipped.
+
+    var mode: String
+        get() = sp.getString("mode", MODE_EVERYTHING).orEmpty()
+        set(v) = sp.edit().putString("mode", v).apply()
+
+    val wantsBlobs: Boolean get() = mode != MODE_PHOTOS
+
+    val wantsPhotos: Boolean get() = mode != MODE_BACKUPS
+
+    /** Set once the guided setup has been seen, so it never reappears over a working phone. */
+    var setupDone: Boolean
+        get() = sp.getBoolean("setupDone", false)
+        set(v) = sp.edit().putBoolean("setupDone", v).apply()
+
+    /** True when either half is usable — which is what "is this phone set up" actually means. */
+    val configured: Boolean
+        get() = (wantsBlobs && ready) || (wantsPhotos && photosReady)
 
     fun lastError(): String? = sp.getString("error", null)
 

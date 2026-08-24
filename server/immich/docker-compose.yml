@@ -7,7 +7,10 @@
 #    as *external* libraries, so Immich indexes 400GB of camera folders in place and can
 #    never move or delete a file it did not upload;
 #  * /dev/dri is passed through for Quick Sync (Alder Lake UHD) so video thumbnails don't
-#    pin all six cores.
+#    pin all six cores;
+#  * the server joins the Cloudflare tunnel's network, so the tunnel can reach it as
+#    `http://immich_server:2283` — BasilNet does not answer its own LAN address from inside
+#    itself, which is the same trap the calendar feed hit.
 #
 # Upgrades: bump IMMICH_VERSION in .env, then `docker compose pull && docker compose up -d`.
 name: immich
@@ -33,6 +36,9 @@ services:
     restart: always
     healthcheck:
       disable: false
+    networks:
+      - default
+      - tunnel
 
   immich-machine-learning:
     container_name: immich_machine_learning
@@ -66,6 +72,17 @@ services:
     restart: always
     healthcheck:
       disable: false
+
+networks:
+  default:
+  # The public hostname and its path rules live in Cloudflare's dashboard, not here: this
+  # tunnel is token-run and remotely managed. Leave this section out if there is no tunnel —
+  # port 2283 on the LAN is what the phone uses either way, and it is the only path that
+  # matters for uploads. Cloudflare caps a proxied request body at 100MB on the free plan, so
+  # a 4K clip cannot be uploaded *through* the tunnel even though it can be watched through it.
+  tunnel:
+    name: cloudfare_v2_default
+    external: true
 
 volumes:
   model-cache:

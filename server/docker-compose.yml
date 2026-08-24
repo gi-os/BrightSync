@@ -21,6 +21,15 @@ services:
       CALENDAR_SECRET: ${CALENDAR_SECRET:-}
       CALENDAR_NAME: ${CALENDAR_NAME:-Work}
       CALENDAR_REFRESH_MIN: 20
+      # The setup page at /enroll/<token>: what the phone should call this box, and the Immich
+      # details to hand it. ENROLL_PASSPHRASE is the one to think about before setting — with it,
+      # one scan finishes setup and this container can decrypt every blob it holds. Empty means
+      # the phone asks for the passphrase once, which is the default and the honest shape.
+      LIGHTSYNC_PHONE_URL: ${LIGHTSYNC_PHONE_URL:-http://192.168.68.59:8099}
+      IMMICH_URL: ${IMMICH_URL:-}
+      IMMICH_KEY: ${IMMICH_KEY:-}
+      IMMICH_ALBUM: ${IMMICH_ALBUM:-Light Phone III}
+      ENROLL_PASSPHRASE: ${ENROLL_PASSPHRASE:-}
     volumes:
       - ./data:/data
     networks:
