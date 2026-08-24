@@ -22,6 +22,7 @@ import com.gios.light.common.hw.LocalWheelBus
 import com.gios.light.common.hw.WheelBus
 import com.gios.lightsync.ui.AppsScreen
 import com.gios.lightsync.ui.FirstRunScreen
+import com.gios.lightsync.ui.ImmichSignInScreen
 import com.gios.lightsync.ui.ScanScreen
 import com.gios.lightsync.ui.FleetScreen
 import com.gios.lightsync.ui.SetupScreen
@@ -60,8 +61,18 @@ class MainActivity : ComponentActivity() {
         // server taken away needs the error on the front screen, not a wizard over the top of it.
         var firstRun by remember { mutableStateOf(!prefs.setupDone && !prefs.configured) }
         var scanning by remember { mutableStateOf(false) }
-        BackHandler(enabled = setup || scanning) {
-            if (scanning) scanning = false else setup = false
+        var signingIn by remember { mutableStateOf(false) }
+        BackHandler(enabled = setup || scanning || signingIn) {
+            when {
+                scanning -> scanning = false
+                signingIn -> signingIn = false
+                else -> setup = false
+            }
+        }
+
+        if (signingIn) {
+            ImmichSignInScreen(onBack = { signingIn = false })
+            return
         }
 
         if (scanning) {
@@ -87,7 +98,11 @@ class MainActivity : ComponentActivity() {
         }
 
         if (setup) {
-            SetupScreen(onBack = { setup = false }, onScan = { scanning = true })
+            SetupScreen(
+                onBack = { setup = false },
+                onScan = { scanning = true },
+                onSignIn = { signingIn = true },
+            )
             return
         }
 

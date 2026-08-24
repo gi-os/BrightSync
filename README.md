@@ -134,6 +134,13 @@ not have, so it would bind and never answer.
 The page has three variants, and *Photos only* is a real answer rather than a lesser one: Immich
 needs no blob store and no passphrase, so a phone set up that way types nothing at all.
 
+**If photographs are all you want, there is no server to run and no code to scan.** Choose
+*Photos only* on first launch and give the phone your Immich address and the password you log
+into it with. BrightSync signs in the way Immich's own app does, asks Immich for a key of its
+own, and forgets the password — the key it keeps can upload, read and keep one album, and
+nothing it holds can delete a photograph. That path needs no LightSync container at all: the
+blob store, the token and the passphrase are for app data, and app data is the half you skipped.
+
 **The passphrase is not in the code by default.** It is the one secret this server does not hold,
 and the reason it cannot read your backups; the phone asks for it once after the scan. Setting
 `ENROLL_PASSPHRASE` puts it in the QR and finishes setup in one scan — and means the container

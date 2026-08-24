@@ -162,6 +162,50 @@ class Immich(base: String, private val key: String) {
         conn.body()
     }
 
+    /**
+     * Sign in and mint an API key, so that setting up photographs is a password rather than a
+     * forty-three character string.
+     *
+     * Typing an Immich API key on a Light Phone is the worst part of this app, and it is the
+     * only part that cannot be checked as you go: one wrong character reads as 401 later.
+     * Immich's own apps sign in with an email and a password, so this does the same and then
+     * asks the server for a key of its own — which is the credential that gets stored. The
+     * password is used for one request and never written down.
+     *
+     * The key is scoped rather than `all`. A phone that is lost can add photographs and read
+     * them back; it cannot delete anything, which is the whole difference between a backup
+     * target and a liability.
+     */
+    fun signInAndMintKey(email: String, password: String, label: String = "BrightSync"): String {
+        val login = open("/api/auth/login", "POST")
+        login.setRequestProperty("Content-Type", "application/json")
+        login.doOutput = true
+        login.outputStream.use {
+            it.write(JSONObject().put("email", email).put("password", password).toString().toByteArray())
+        }
+        login.expect(200, 201)
+        val bearer = JSONObject(login.body()).optString("accessToken")
+        if (bearer.isEmpty()) throw IOException("Immich signed in but returned no token")
+
+        val make = (URL(root + "/api/api-keys").openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            setRequestProperty("Authorization", "Bearer $bearer")
+            setRequestProperty("Content-Type", "application/json")
+            setRequestProperty("Accept", "application/json")
+            connectTimeout = 4_000
+            readTimeout = 30_000
+            doOutput = true
+        }
+        val body = JSONObject()
+            .put("name", label)
+            .put("permissions", JSONArray(PERMISSIONS))
+        make.outputStream.use { it.write(body.toString().toByteArray()) }
+        make.expect(200, 201)
+        val secret = JSONObject(make.body()).optString("secret")
+        if (secret.isEmpty()) throw IOException("Immich made a key but returned no secret")
+        return secret
+    }
+
     private fun open(path: String, method: String): HttpURLConnection =
         (URL(root + path).openConnection() as HttpURLConnection).apply {
             requestMethod = method
@@ -187,6 +231,39 @@ class Immich(base: String, private val key: String) {
     companion object {
         /** Immich groups uploads by the device that sent them; the phone is one device. */
         const val DEVICE = "brightsync"
+
+        /**
+         * What the phone's own key is allowed to do: add photographs, read them back, and keep
+         * one album. Not `all`, and deliberately nothing that deletes.
+         */
+        val PERMISSIONS = listOf(
+            "asset.upload",
+            "asset.read",
+            "asset.view",
+            "asset.download",
+            "album.create",
+            "album.read",
+            "albumAsset.create",
+        )
+
+        /**
+         * What someone types into the address box, made into something `URL` will accept.
+         *
+         * On a phone the scheme is the first thing to get dropped and the `/api` is the first
+         * thing to get added — both from muscle memory, both fatal, and neither worth an error
+         * message when the intent is obvious. A bare host gets `http://`, since Immich on a LAN
+         * has no certificate and the README says to keep it that way.
+         */
+        fun normalize(typed: String): String {
+            val trimmed = typed.trim().trimEnd('/')
+            if (trimmed.isEmpty()) return ""
+            val schemed = if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+                trimmed
+            } else {
+                "http://$trimmed"
+            }
+            return schemed.removeSuffix("/api")
+        }
 
         /** Immich wants ISO-8601, and rejects a bare epoch. */
         fun iso(millis: Long): String =

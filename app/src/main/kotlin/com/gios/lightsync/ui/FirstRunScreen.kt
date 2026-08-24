@@ -62,7 +62,10 @@ fun FirstRunScreen(onManual: () -> Unit, onDone: () -> Unit) {
         val wantsBlobs = mode != Prefs.MODE_PHOTOS
         val wantsPhotos = mode != Prefs.MODE_BACKUPS
         step = when {
-            from < Step.Scan -> Step.Scan
+            // Photographs alone need no server, no token and no passphrase, so that path skips
+            // the code entirely and asks for the two things Immich actually wants.
+            from < Step.Immich && mode == Prefs.MODE_PHOTOS && !prefs.photosReady -> Step.Immich
+            from < Step.Scan && mode != Prefs.MODE_PHOTOS -> Step.Scan
             from < Step.Passphrase && wantsBlobs && prefs.passphrase.isEmpty() -> Step.Passphrase
             from < Step.Roll && wantsPhotos && !rollGranted -> Step.Roll
             else -> Step.Done
@@ -126,6 +129,20 @@ fun FirstRunScreen(onManual: () -> Unit, onDone: () -> Unit) {
                         Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                         filled = true,
                     ) { advance(Step.Mode) }
+                }
+
+                Step.Immich -> {
+                    ImmichSignIn(onDone = { advance(Step.Immich) })
+                    Gap(16)
+                    BigButton(
+                        "SCAN A CODE INSTEAD",
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    ) { step = Step.Scan }
+                    Gap(10)
+                    BigButton(
+                        "SKIP",
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    ) { advance(Step.Immich) }
                 }
 
                 Step.Passphrase -> {
@@ -242,4 +259,4 @@ private fun ModeRow(label: String, detail: Boolean, sub: String, onClick: () -> 
     Rule()
 }
 
-private enum class Step { Mode, Scan, Passphrase, Roll, Done }
+private enum class Step { Mode, Immich, Scan, Passphrase, Roll, Done }

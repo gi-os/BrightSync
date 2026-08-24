@@ -18,6 +18,18 @@ Scanning is ZXing over a CameraX stream, ported from Roll along with its row-str
 camera is bound by one screen, for as long as that screen is up, with nothing attached that could
 write a frame anywhere.
 
+### Photographs on their own, set up with a password
+
+An Immich API key is forty-three characters of base64, and typing it on this keyboard was the
+worst thing this app asked of anyone — and the only step where one wrong character stays silent
+until an upload fails hours later. So the phone now signs in the way Immich's own app does, asks
+the server for a key of its own, and forgets the password. The key it keeps is scoped to
+uploading, reading and one album, so a lost phone can add photographs and delete nothing.
+
+That makes "photos only" a two-field setup with no LightSync container behind it: the blob store,
+the token and the passphrase exist for app data, and a phone that only wants its roll on Immich
+needs none of the three.
+
 ### Immich, on the same box
 
 `server/immich` stands up Immich next to the LightSync container: the library and its Postgres on

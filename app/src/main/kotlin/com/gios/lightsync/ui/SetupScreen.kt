@@ -47,7 +47,7 @@ import kotlinx.coroutines.withContext
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SetupScreen(onBack: () -> Unit, onScan: () -> Unit = {}) {
+fun SetupScreen(onBack: () -> Unit, onScan: () -> Unit = {}, onSignIn: () -> Unit = {}) {
     val context = LocalContext.current
     val prefs = remember { Prefs(context) }
 
@@ -169,6 +169,13 @@ fun SetupScreen(onBack: () -> Unit, onScan: () -> Unit = {}) {
                 detail = if (immich.isEmpty()) "NOT SET" else "SET",
                 sub = immich.ifEmpty { "http://192.168.68.59:2283" },
                 onClick = { editing = "immich" },
+            )
+            MenuRow(
+                label = "Sign in instead",
+                detail = "EASIER",
+                sub = "Immich address and your password, and BrightSync asks Immich for a key " +
+                    "of its own. The password is not stored.",
+                onClick = onSignIn,
             )
             MenuRow(
                 label = "API key",
