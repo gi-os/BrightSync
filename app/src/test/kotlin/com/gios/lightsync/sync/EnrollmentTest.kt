@@ -60,8 +60,26 @@ class EnrollmentTest {
     }
 
     @Test
+    fun `a bare address is taken as an Immich to sign in to`() {
+        val e = Enrollment.parse("http://192.168.68.59:2283")!!
+        assertEquals("http://192.168.68.59:2283", e.immich)
+        assertTrue(e.hasPhotos)
+        assertFalse(e.hasBlobs)
+        // The address someone copies out of the docs still means the same server.
+        assertEquals("https://photos.basilnet.com", Enrollment.parse("https://photos.basilnet.com/api")!!.immich)
+        assertEquals("https://photos.basilnet.com", Enrollment.parse("https://photos.basilnet.com/")!!.immich)
+    }
+
+    @Test
+    fun `a link to something inside a server is not a server`() {
+        // A shared album is a URL someone meant to open. Accepting it would point the phone at
+        // the right host for the wrong reason, and hide it behind a setup that looked fine.
+        assertNull(Enrollment.parse("https://photos.basilnet.com/share/abc123"))
+        assertNull(Enrollment.parse("https://photos.basilnet.com/photos/1"))
+    }
+
+    @Test
     fun `anything else scanned is not ours`() {
-        assertNull(Enrollment.parse("https://example.com"))
         assertNull(Enrollment.parse("WIFI:S:home;T:WPA;P:hunter2;;"))
         assertNull(Enrollment.parse(""))
         // A version this build does not know: refuse rather than half-apply.

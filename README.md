@@ -134,9 +134,24 @@ not have, so it would bind and never answer.
 The page has three variants, and *Photos only* is a real answer rather than a lesser one: Immich
 needs no blob store and no passphrase, so a phone set up that way types nothing at all.
 
-**If photographs are all you want, there is no server to run and no code to scan.** Choose
-*Photos only* on first launch and give the phone your Immich address and the password you log
-into it with. BrightSync signs in the way Immich's own app does, asks Immich for a key of its
+**If photographs are all you want, there is still a code to scan — and no server to run for it.**
+
+```bash
+pip install segno
+python3 server/enroll_qr.py --immich 192.168.68.59:2283 --email you@example.com
+```
+
+That signs in to Immich once, asks it for a key scoped to uploading and one album, and prints
+the QR in the terminal. `--key` uses one you already made; `--svg code.svg` writes a bigger one
+for a bigger screen. Nothing runs afterwards and nothing is stored — revoking the key in Immich
+undoes the whole thing.
+
+Any QR carrying nothing but the address works too, and the phone asks for the password itself. A
+link to an album or a shared photograph is refused: that is a URL somebody meant to open, not a
+server to back up to.
+
+Or type it. Choose *Photos only* on first launch and give the phone your Immich address and the
+password you log into it with. BrightSync signs in the way Immich's own app does, asks Immich for a key of its
 own, and forgets the password — the key it keeps can upload, read and keep one album, and
 nothing it holds can delete a photograph. That path needs no LightSync container at all: the
 blob store, the token and the passphrase are for app data, and app data is the half you skipped.
@@ -308,6 +323,7 @@ that never ran, so the last failure sits on the front screen until a run succeed
 ```
 server/app.py            three routes, retention, no crypto
 server/enroll.py         the setup page: one QR, and what it does and does not carry
+server/enroll_qr.py      the same code from a terminal, for Immich with no container behind it
 server/immich/           the photo library: compose, external libraries, Quick Sync
 server/calendar_bridge.py Microsoft Graph → one .ics the phone can GET
 module/LightSyncBackup.kt the per-app contribution: zip, restore, caller check

@@ -63,6 +63,32 @@ data class Enrollment(
         const val PREFIX = "$SCHEME://setup?"
 
         /**
+         * A plain `http(s)://host` code, taken as an Immich address.
+         *
+         * Not every QR worth scanning comes from this server. A code with nothing in it but the
+         * address of an Immich — printed by `server/enroll_qr.py`, pasted into any QR generator,
+         * or stuck to the side of the box — is unambiguous, and refusing it would mean the
+         * scanner works for one source and silently ignores every other. What it cannot carry is
+         * a credential, so the phone signs in afterwards; that is the same two fields the manual
+         * path asks for, minus the address, which is the part worth not typing.
+         *
+         * Deliberately narrow: a scheme, a host, and no path beyond a slash. A link to an album
+         * or a shared photograph is a URL someone meant to open, not a server to back up to.
+         */
+        private fun bareAddress(scanned: String): Enrollment? {
+            val lower = scanned.lowercase()
+            if (!lower.startsWith("http://") && !lower.startsWith("https://")) return null
+            val afterScheme = scanned.substringAfter("://")
+            val host = afterScheme.substringBefore('/')
+            val path = afterScheme.removePrefix(host).trimEnd('/')
+            if (host.isEmpty() || host.contains(' ')) return null
+            // `/api` is what someone copies out of the Immich docs, and it is the one path that
+            // still means "this server".
+            if (path.isNotEmpty() && path != "/api") return null
+            return Enrollment(immich = "${scanned.substringBefore("://")}://$host")
+        }
+
+        /**
          * Parse a scanned string, or null if it is not one of ours.
          *
          * Hand-rolled rather than `Uri.parse`, so this is a plain JVM function with a test that
@@ -72,7 +98,7 @@ data class Enrollment(
          */
         fun parse(scanned: String): Enrollment? {
             val trimmed = scanned.trim()
-            if (!trimmed.startsWith(PREFIX, ignoreCase = true)) return null
+            if (!trimmed.startsWith(PREFIX, ignoreCase = true)) return bareAddress(trimmed)
             val fields = trimmed.removePrefix(PREFIX)
                 .split('&')
                 .filter { it.isNotEmpty() }

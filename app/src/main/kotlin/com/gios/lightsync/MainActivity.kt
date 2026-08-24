@@ -71,7 +71,13 @@ class MainActivity : ComponentActivity() {
         }
 
         if (signingIn) {
-            ImmichSignInScreen(onBack = { signingIn = false })
+            ImmichSignInScreen(
+                onBack = { signingIn = false },
+                onScan = {
+                    signingIn = false
+                    scanning = true
+                },
+            )
             return
         }
 

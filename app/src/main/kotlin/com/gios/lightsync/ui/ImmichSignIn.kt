@@ -49,7 +49,7 @@ import kotlinx.coroutines.withContext
  * A phone that only wants Immich is this screen and nothing else.
  */
 @Composable
-fun ImmichSignIn(onDone: () -> Unit, modifier: Modifier = Modifier) {
+fun ImmichSignIn(onDone: () -> Unit, onScan: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val prefs = remember { Prefs(context) }
     val scope = rememberCoroutineScope()
@@ -62,6 +62,14 @@ fun ImmichSignIn(onDone: () -> Unit, modifier: Modifier = Modifier) {
 
     Column(modifier) {
         SectionLabel("IMMICH")
+        // The code first, because it is the path with nothing to mistype. Everything below is
+        // the same two answers given by hand, for a phone that is nowhere near a screen.
+        BigButton(
+            "SCAN A CODE",
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            onClick = onScan,
+        )
+        Gap(14)
         Text(
             "The address of your Immich, and the account you log into it with. BrightSync asks " +
                 "Immich for a key of its own and forgets the password — nothing else here is " +
@@ -114,7 +122,10 @@ fun ImmichSignIn(onDone: () -> Unit, modifier: Modifier = Modifier) {
         }
         Gap(12)
         Text(
-            "Prefer a key you made yourself? Setup → PHOTOS → API key still takes one.",
+            "A code comes from /enroll on BasilNet, or from `python3 server/enroll_qr.py " +
+                "--immich <address> --email <you>` on any machine — that one needs no server " +
+                "running at all. A QR holding nothing but the address works too; the phone then " +
+                "asks for the password here.",
             style = MaterialTheme.typography.bodyMedium,
             color = Dim,
             modifier = Modifier.padding(horizontal = 16.dp),
@@ -125,7 +136,7 @@ fun ImmichSignIn(onDone: () -> Unit, modifier: Modifier = Modifier) {
 /** The standalone version, for a phone that is already set up and is adding photographs. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ImmichSignInScreen(onBack: () -> Unit) {
+fun ImmichSignInScreen(onBack: () -> Unit, onScan: () -> Unit) {
     Scaffold(
         containerColor = Color.Black,
         topBar = {
@@ -140,7 +151,7 @@ fun ImmichSignInScreen(onBack: () -> Unit) {
             )
         },
     ) { pad ->
-        ImmichSignIn(onDone = onBack, modifier = Modifier.padding(pad).fillMaxSize())
+        ImmichSignIn(onDone = onBack, onScan = onScan, modifier = Modifier.padding(pad).fillMaxSize())
     }
 }
 

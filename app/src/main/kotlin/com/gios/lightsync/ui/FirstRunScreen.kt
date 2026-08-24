@@ -132,13 +132,11 @@ fun FirstRunScreen(onManual: () -> Unit, onDone: () -> Unit) {
                 }
 
                 Step.Immich -> {
-                    ImmichSignIn(onDone = { advance(Step.Immich) })
+                    ImmichSignIn(
+                        onDone = { advance(Step.Immich) },
+                        onScan = { step = Step.Scan },
+                    )
                     Gap(16)
-                    BigButton(
-                        "SCAN A CODE INSTEAD",
-                        Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    ) { step = Step.Scan }
-                    Gap(10)
                     BigButton(
                         "SKIP",
                         Modifier.fillMaxWidth().padding(horizontal = 16.dp),

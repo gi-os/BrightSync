@@ -26,6 +26,12 @@ until an upload fails hours later. So the phone now signs in the way Immich's ow
 the server for a key of its own, and forgets the password. The key it keeps is scoped to
 uploading, reading and one album, so a lost phone can add photographs and delete nothing.
 
+Every Immich path now has a code behind it. `server/enroll_qr.py` prints one from any terminal
+— it signs in, mints the scoped key and draws the QR, with no container running anywhere — and
+the sign-in screen leads with **SCAN A CODE** rather than burying it. A QR holding nothing but an
+address is accepted as well, with the phone asking for the password afterwards; a link to an
+album or a shared photograph is not, because that is a URL someone meant to open.
+
 That makes "photos only" a two-field setup with no LightSync container behind it: the blob store,
 the token and the passphrase exist for app data, and a phone that only wants its roll on Immich
 needs none of the three.
