@@ -1,3 +1,48 @@
+## BrightSync v1.3 — The roll goes to Immich
+
+Photographs were under "Not doing" for two releases. They are in now, and not as blobs.
+
+### Immich, on the same box
+
+`server/immich` stands up Immich next to the LightSync container: the library and its Postgres on
+the NVMe volume, and `/volume1/Photos` plus `/volume1/Lupo Family Photos` mounted read-only as
+*external* libraries, so 400GB of camera folders — X-Pro3, Z6-III, GRIII, the Cybershots, the
+film scans — are indexed where they already live and cannot be moved by anything Immich does.
+
+The phone talks to it directly with an API key: `bulk-upload-check` to ask what is new,
+`POST /assets` to hand over the frames that are, and an album so the roll is one tap away from
+the timeline. Ordinary Immich calls, so an ordinary Immich client — or `immich-go` — reads the
+library back.
+
+### Photographs are not encrypted, and that is the point
+
+Everything else here is sealed on the phone and lands as a blob BasilNet cannot read. That cannot
+work for a photo library: Immich decodes every file it is given to build thumbnails, read EXIF,
+cluster faces and index places. Sealing the roll would have produced a megabyte-per-frame archive
+that only this app could open, which is a folder you hope you never need rather than a library.
+
+So the roll is a stated exception, in the README and in `sync/Immich.kt`, and the API key it uses
+grants upload and album rights rather than `all` — a lost phone can add photographs and delete
+nothing.
+
+### No app had to join
+
+This is the one payload that needed no cooperation from the app that made it. Roll writes to
+`DCIM/Camera` through MediaStore, which is shared storage, so the agent reads it under its own
+grant. Nothing was added to light-common and no other repository changed. BrightImport's frames,
+pulled off a real camera over its wifi, go up the same way without either app knowing.
+
+### Fifty at a time, and it resumes
+
+A week away shooting is hundreds of files. A pass takes fifty frames, and if more are waiting it
+queues another run for ten minutes' time instead of tomorrow. The watermark is the last frame that
+got through, and it is only a hint about where to start reading — Immich answers on checksums, so
+a reset watermark costs some hashing and re-uploads nothing. Nothing is ever deleted from the
+phone by a pass.
+
+`photo-bridge` is retired. It decrypted blobs on the server and pushed them into iCloud, which
+meant photographs left the house twice to end up somewhere you needed an Apple device to read.
+
 ## LightSync v1.2 — A fleet tab, and the backup provider moves into light-common
 
 ### The fleet tab

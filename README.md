@@ -16,7 +16,7 @@ every Bright app, at
 
 | | |
 |---|---|
-| **Where it goes** | BasilNet, over the LAN, as one encrypted blob per app |
+| **Where it goes** | BasilNet, over the LAN, as one encrypted blob per app — and the camera roll into Immich |
 | **When** | Daily on wifi, or whenever you tap *Back up everything* |
 | **What the server sees** | Ciphertext and a package name. Nothing else |
 | **Restore** | Tap an app twice |
@@ -116,6 +116,48 @@ Three routes, ten versions kept per app, files on disk under `data/<package>/<ep
 never decrypts anything and has no idea what it is holding. Bound to the LAN address rather than
 `0.0.0.0` as a reminder that the token's backup is the network.
 
+## Photographs
+
+The roll goes to **Immich** on the same box, and it is the one payload here that is not
+encrypted. That is a decision, not an omission: Immich decodes every file it is given to build
+thumbnails, read EXIF, cluster faces and index places, so a library of ciphertext is a library of
+nothing. Sealing photographs would have bought a megabyte-per-frame blob that only this app could
+ever open, which is not a photo library — it is a folder you hope you never need.
+
+```bash
+cd server/immich
+cp .env.example .env      # set DB_PASSWORD
+docker compose up -d      # http://192.168.68.59:2283
+```
+
+Then, on the phone: Setup → PHOTOS → the Immich address and an API key with upload, read and
+album rights. `server/immich/README.md` has the rest, including what the external libraries are
+for.
+
+**No app has to join.** This is the only part of BrightSync that needs no cooperation from the
+app that produced the data. Roll writes photographs to `DCIM/Camera` through MediaStore, which is
+shared storage rather than a sandbox, so the agent reads them under its own `READ_MEDIA_IMAGES`
+grant. Nothing was added to light-common, and BrightImport's frames — pulled off a real camera
+over its wifi — go up the same way without either app knowing this exists.
+
+**Dedupe before the bytes move.** The roll is re-read from scratch every run, so nearly
+everything the phone offers is already up. `POST /assets/bulk-upload-check` answers
+accept-or-reject for a batch of SHA-1s in one small request, and only the accepted frames are
+uploaded. Immich would reject the duplicates anyway — it hashes what it receives — but only after
+the phone had pushed the file across the wifi to be told so.
+
+**Fifty frames a pass, and the pass resumes.** A week away shooting is hundreds of files and
+gigabytes; WorkManager will not hold a job open for that. So a run takes fifty, and if more are
+waiting it queues another for ten minutes' time rather than for tomorrow. The watermark is
+`DATE_MODIFIED` of the last frame that got through — a hint about where to start reading, no
+more. Whether a frame goes up is answered by Immich against its own index, so a reset watermark
+costs some hashing and uploads nothing twice.
+
+**Nothing is deleted, ever.** A pass only ever adds. Clearing space on the phone is a decision
+made in Roll, not a side effect of a backup, and there is no photo restore: Immich is a photo
+library with its own clients, and `immich-go` moves the whole thing elsewhere if it ever needs
+to. The rest of BrightSync restores because a blob is useless without this app; a JPEG is not.
+
 ## The work-calendar bridge
 
 `server/calendar_bridge.py` rides along in the same container: Microsoft 365 in, one plain
@@ -207,8 +249,15 @@ rather than assumed.
 
 ## Gotchas, in the order they'll bite
 
-**BasilNet is LAN-only.** A day out shooting photos backs up nothing until you're home; the daily
-job just waits. Tailscale on both ends would fix it.
+**BasilNet is LAN-only.** A day out shooting photographs backs up nothing until you are home; the
+daily job just waits, and then works through the roll fifty frames at a time. Tailscale on both
+ends would fix it — and would be a bad idea for the photo half specifically, since that traffic
+is in the clear and would then be in the clear across a tunnel you did not audit.
+
+**A photo library is not a backup of the phone.** Immich holds what the phone sent it. Delete a
+frame on the phone after it went up and Immich keeps it; delete it in Immich and the next pass
+does not put it back, because the phone's watermark has moved past it. That asymmetry is the
+price of not treating photographs as blobs, and it is the right way round for a roll.
 
 **Restore kills the app.** Prefs and Room cache in memory, so an app still running after its files
 were swapped underneath it will write the old state back over the new. The module ends the process
@@ -224,12 +273,16 @@ that never ran, so the last failure sits on the front screen until a run succeed
 
 ```
 server/app.py            three routes, retention, no crypto
+server/immich/           the photo library: compose, external libraries, Quick Sync
 server/calendar_bridge.py Microsoft Graph → one .ics the phone can GET
 module/LightSyncBackup.kt the per-app contribution: zip, restore, caller check
 sync/Crypto.kt           seal and open, format documented above
 sync/Server.kt           the three calls, HttpURLConnection
 sync/Discovery.kt        find apps by provider authority suffix
 sync/Vault.kt            one backup or one restore, end to end
+sync/Immich.kt           the photo path: bulk-check, multipart upload, albums
+sync/Roll.kt             DCIM through MediaStore, and the SHA-1 Immich dedupes on
+sync/Photos.kt           one resumable pass over the roll
 sync/SyncWorker.kt       daily, unmetered
 ui/AppsScreen.kt         what's backed up, when, and the two verbs
 ui/SetupScreen.kt        server, token, passphrase, reachability
@@ -239,6 +292,9 @@ ui/SetupScreen.kt        server, token, passphrase, reachability
 
 - **Sync.** This is backup and restore: one direction at a time, chosen by you. Two-way sync needs
   conflict resolution, and nothing here is edited on two devices.
-- **Photos, yet.** LightCamera's roll is the one payload that is megabytes rather than kilobytes
-  and wants hash-dedupe and chunking of its own.
+- **Restoring photographs.** They go up and stay up. Immich has its own clients for getting them
+  back, and putting a 400-frame roll back onto a phone with 32GB is not a thing anyone wants.
+- **Photos through the blob store.** Tried on paper and dropped: it needed the server to hold the
+  passphrase to hand anything to Immich, which would have cost the one property the rest of this
+  design is built on.
 - **Trusting the server.** It stores what it's given and hands it back. That's all.

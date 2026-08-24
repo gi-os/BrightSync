@@ -1,0 +1,71 @@
+# Immich on BasilNet.
+#
+# Derived from the upstream release compose, with three deliberate changes:
+#  * the phone's library and the database live on /volume2 (NVMe), not on the RAID5 pool —
+#    Postgres on spinning disks is what makes an Immich instance feel broken;
+#  * /volume1/Photos and "/volume1/Lupo Family Photos" are mounted read-only and registered
+#    as *external* libraries, so Immich indexes 400GB of camera folders in place and can
+#    never move or delete a file it did not upload;
+#  * /dev/dri is passed through for Quick Sync (Alder Lake UHD) so video thumbnails don't
+#    pin all six cores.
+#
+# Upgrades: bump IMMICH_VERSION in .env, then `docker compose pull && docker compose up -d`.
+name: immich
+
+services:
+  immich-server:
+    container_name: immich_server
+    image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-release}
+    volumes:
+      - ${UPLOAD_LOCATION}:/data
+      - /volume1/Photos:/mnt/photos:ro
+      - /volume1/Lupo Family Photos:/mnt/family:ro
+      - /etc/localtime:/etc/localtime:ro
+    devices:
+      - /dev/dri:/dev/dri
+    env_file:
+      - .env
+    ports:
+      - '2283:2283'
+    depends_on:
+      - redis
+      - database
+    restart: always
+    healthcheck:
+      disable: false
+
+  immich-machine-learning:
+    container_name: immich_machine_learning
+    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-release}
+    volumes:
+      - model-cache:/cache
+    env_file:
+      - .env
+    restart: always
+    healthcheck:
+      disable: false
+
+  redis:
+    container_name: immich_redis
+    image: docker.io/valkey/valkey:9@sha256:8e8d64b405ce18f41b8e5ee20aa4687a8ed0022d1298f2ce31cdcf3a76e09411
+    healthcheck:
+      test: redis-cli ping || exit 1
+    restart: always
+
+  database:
+    container_name: immich_postgres
+    image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0@sha256:bcf63357191b76a916ae5eb93464d65c07511da41e3bf7a8416db519b40b1c23
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_DB: ${DB_DATABASE_NAME}
+      POSTGRES_INITDB_ARGS: '--data-checksums'
+    volumes:
+      - ${DB_DATA_LOCATION}:/var/lib/postgresql/data
+    shm_size: 128mb
+    restart: always
+    healthcheck:
+      disable: false
+
+volumes:
+  model-cache:

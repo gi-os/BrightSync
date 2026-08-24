@@ -12,6 +12,16 @@
     -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
 
+    <!--
+      The camera roll. Photographs are the one payload no app can hand over: Roll writes them to
+      `DCIM/Camera` through MediaStore, which is shared storage rather than an app sandbox, so
+      the agent reads them under its own grant and no other app needs a line of code. Both
+      halves of the granular media permissions, because stills and clips are two tables — with
+      images alone every video in the roll is simply absent from the query.
+    -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+
     <application
         android:name=".SyncApp"
         android:allowBackup="false"

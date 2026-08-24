@@ -1,5 +1,7 @@
 package com.gios.lightsync.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -26,6 +28,8 @@ import com.gios.light.common.hw.WheelScroll
 import com.gios.lightsync.Prefs
 import com.gios.lightsync.sync.Backupable
 import com.gios.lightsync.sync.Discovery
+import com.gios.lightsync.sync.Photos
+import com.gios.lightsync.sync.Roll
 import com.gios.lightsync.sync.Vault
 import com.gios.lightsync.ui.theme.Dim
 import kotlinx.coroutines.Dispatchers
@@ -52,8 +56,29 @@ fun AppsScreen(onSetup: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var confirming by remember { mutableStateOf<String?>(null) }
     var revision by remember { mutableStateOf(0) }
+    var granted by remember { mutableStateOf(Roll.granted(context)) }
+    var waiting by remember { mutableStateOf(-1) }
+
+    // Asked for here rather than at launch, and only when the roll is actually about to be
+    // read. A permission dialog in front of a list of app names, on first open, explains
+    // nothing about why it is being asked.
+    val askForRoll = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) {
+        // Re-queried rather than read out of the result map: the map omits anything that was
+        // already granted, so folding it in can only ever keep a false false.
+        granted = Roll.granted(context)
+    }
 
     LaunchedEffectApps(revision) { apps = withContext(Dispatchers.IO) { Discovery.find(context) } }
+
+    LaunchedEffectApps(revision + if (granted) 1 else 0) {
+        waiting = if (granted && prefs.photosReady) {
+            withContext(Dispatchers.IO) { Roll.pending(context, prefs.photoMark) }
+        } else {
+            -1
+        }
+    }
 
     val listState = rememberLazyListState()
     WheelScroll(listState)
@@ -96,6 +121,53 @@ fun AppsScreen(onSetup: () -> Unit) {
                                         onFailure = { it.message ?: "failed" },
                                     )
                                     revision++
+                                }
+                            }
+                        },
+                    )
+                    Rule()
+                }
+
+                item {
+                    // The roll is the one row here that does not go into a blob. It is on this
+                    // screen and not behind a third tab because it is the same verb — send what
+                    // is new to BasilNet — and because a gigabyte of photographs waiting on the
+                    // phone is worth seeing next to everything else that is up to date.
+                    MenuRow(
+                        label = if (busy) "Uploading…" else "Back up the roll",
+                        detail = when {
+                            !prefs.photosReady -> "OFF"
+                            !granted -> "ALLOW"
+                            waiting < 0 -> "—"
+                            else -> "$waiting"
+                        },
+                        dim = !prefs.photosReady,
+                        sub = when {
+                            !prefs.photosReady -> "no Immich yet — tap to set one up"
+                            !granted -> "BrightSync needs to read DCIM to upload photographs"
+                            waiting == 0 -> "everything is on Immich" + photoTotal(prefs)
+                            else -> "to Immich, in the clear" + photoTotal(prefs)
+                        },
+                        onClick = {
+                            when {
+                                !prefs.photosReady -> onSetup()
+                                !granted -> askForRoll.launch(Roll.PERMISSIONS)
+                                else -> {
+                                    busy = true
+                                    status = null
+                                    scope.launch {
+                                        val result = withContext(Dispatchers.IO) {
+                                            runCatching { Photos(context).run() }
+                                        }
+                                        busy = false
+                                        status = result.fold(
+                                            onSuccess = { run ->
+                                                "sent ${run.uploaded}, ${run.remaining} to go"
+                                            },
+                                            onFailure = { it.message ?: "failed" },
+                                        )
+                                        revision++
+                                    }
                                 }
                             }
                         },
@@ -163,6 +235,10 @@ fun AppsScreen(onSetup: () -> Unit) {
 private fun LaunchedEffectApps(key: Int, block: suspend () -> Unit) {
     androidx.compose.runtime.LaunchedEffect(key) { block() }
 }
+
+/** " · 412 photographs so far", or nothing on a phone that has never sent one. */
+private fun photoTotal(prefs: Prefs): String =
+    prefs.photoCount().let { if (it == 0) "" else " · $it sent so far" }
 
 private fun whenReady(prefs: Prefs): String =
     if (prefs.ready) "daily, on wifi" else "not set up — tap SETUP"

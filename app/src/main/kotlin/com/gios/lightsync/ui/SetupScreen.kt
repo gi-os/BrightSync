@@ -30,17 +30,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.gios.light.common.hw.WheelScroll
 import com.gios.lightsync.Prefs
+import com.gios.lightsync.sync.Immich
 import com.gios.lightsync.sync.Server
 import com.gios.lightsync.ui.theme.Dim
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * The three things LightSync needs, and whether BasilNet is answering.
+ * What BrightSync needs to work, and whether the two things on BasilNet are answering.
  *
- * The passphrase warning is not decoration. Lose it and every blob on the server is scrap: there
- * is no recovery path by design, because a server that could recover your data is a server that
- * could read it.
+ * Two servers rather than one, which is worth being plain about on this screen: blobs go to the
+ * LightSync container, which cannot read them, and photographs go to Immich, which must. The
+ * passphrase protects the first and is unrecoverable; the Immich key protects nothing on the
+ * phone and can be rotated in Immich whenever you like. They are separated here so that neither
+ * one is ever typed into the other's box.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,14 +55,27 @@ fun SetupScreen(onBack: () -> Unit) {
     var token by remember { mutableStateOf(prefs.token) }
     var pass by remember { mutableStateOf(prefs.passphrase) }
     var auto by remember { mutableStateOf(prefs.autoDaily) }
+    var immich by remember { mutableStateOf(prefs.immich) }
+    var immichKey by remember { mutableStateOf(prefs.immichKey) }
+    var album by remember { mutableStateOf(prefs.immichAlbum) }
+    var photosAuto by remember { mutableStateOf(prefs.photosAuto) }
     var editing by remember { mutableStateOf<String?>(null) }
     var reachable by remember { mutableStateOf<Boolean?>(null) }
+    var immichUp by remember { mutableStateOf<Boolean?>(null) }
 
     LaunchedEffect(server, token) {
         reachable = if (server.isEmpty() || token.isEmpty()) {
             null
         } else {
             withContext(Dispatchers.IO) { Server(server, token).reachable() }
+        }
+    }
+
+    LaunchedEffect(immich, immichKey) {
+        immichUp = if (immich.isEmpty()) {
+            null
+        } else {
+            withContext(Dispatchers.IO) { Immich(immich, immichKey).reachable() }
         }
     }
 
@@ -116,6 +132,47 @@ fun SetupScreen(onBack: () -> Unit) {
             )
             Rule()
 
+            SectionLabel("PHOTOS")
+            MenuRow(
+                label = "Immich",
+                detail = if (immich.isEmpty()) "NOT SET" else "SET",
+                sub = immich.ifEmpty { "http://192.168.68.59:2283" },
+                onClick = { editing = "immich" },
+            )
+            MenuRow(
+                label = "API key",
+                detail = if (immichKey.isEmpty()) "NOT SET" else "SET",
+                sub = "Immich → Account Settings → API Keys. Upload and album rights are enough.",
+                onClick = { editing = "immichKey" },
+            )
+            MenuRow(
+                label = "Album",
+                detail = if (album.isEmpty()) "OFF" else "SET",
+                sub = album.ifEmpty { "no album — frames land in the main timeline" },
+                onClick = { editing = "album" },
+            )
+            MenuRow(
+                label = "Answering",
+                detail = when (immichUp) {
+                    null -> "—"
+                    true -> "YES"
+                    false -> "NO"
+                },
+                dim = immichUp != true,
+            )
+            MenuRow(
+                label = "Upload the roll",
+                detail = if (photosAuto) "ON" else "OFF",
+                sub = "Photographs go up in the clear, because a library Immich cannot decode " +
+                    "would have no thumbnails, no dates and no search. Nothing is ever deleted " +
+                    "from the phone.",
+                onClick = {
+                    photosAuto = !photosAuto
+                    prefs.photosAuto = photosAuto
+                },
+            )
+            Rule()
+
             SectionLabel("SCHEDULE")
             MenuRow(
                 label = "Daily backup",
@@ -131,7 +188,9 @@ fun SetupScreen(onBack: () -> Unit) {
                 "Recovery of last resort, with only curl and openssl:\n\n" +
                     "curl -H 'X-Token: …' $server/b/<app>/latest -o blob\n" +
                     "# strip the 4-byte magic, 16-byte salt and 12-byte IV, then AES-256-GCM " +
-                    "with PBKDF2-HMAC-SHA256(pass, salt, 200000)",
+                    "with PBKDF2-HMAC-SHA256(pass, salt, 200000)\n\n" +
+                    "Photographs need none of that: they are ordinary files in Immich, and any " +
+                    "Immich client or immich-go can read them back.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Dim,
                 modifier = Modifier.padding(horizontal = 16.dp),
@@ -146,6 +205,9 @@ fun SetupScreen(onBack: () -> Unit) {
                 when (field) {
                     "server" -> server
                     "token" -> token
+                    "immich" -> immich
+                    "immichKey" -> immichKey
+                    "album" -> album
                     else -> pass
                 },
             )
@@ -158,6 +220,9 @@ fun SetupScreen(onBack: () -> Unit) {
                     when (field) {
                         "server" -> "Server"
                         "token" -> "Token"
+                        "immich" -> "Immich"
+                        "immichKey" -> "API key"
+                        "album" -> "Album"
                         else -> "Passphrase"
                     },
                     style = MaterialTheme.typography.titleMedium,
@@ -181,6 +246,18 @@ fun SetupScreen(onBack: () -> Unit) {
                         "token" -> {
                             prefs.token = draft
                             token = prefs.token
+                        }
+                        "immich" -> {
+                            prefs.immich = draft
+                            immich = prefs.immich
+                        }
+                        "immichKey" -> {
+                            prefs.immichKey = draft
+                            immichKey = prefs.immichKey
+                        }
+                        "album" -> {
+                            prefs.immichAlbum = draft
+                            album = prefs.immichAlbum
                         }
                         else -> {
                             prefs.passphrase = draft
