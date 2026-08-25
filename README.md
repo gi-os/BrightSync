@@ -364,8 +364,6 @@ ui/SetupScreen.kt        server, token, passphrase, reachability
 
 ## Bright\*
 
-*Nightly backups onto a NAS on your own LAN, because nothing on this phone syncs to anybody's cloud.*
-
 26 open-source apps for the **Light Phone III** — camera, music, maps, messages,
 reading, transit, games. The phone has no app store, so they install by sideload: scan one
 code from **[brightmarket.gzl.dev](https://brightmarket.gzl.dev)** and BrightMarket keeps them updated.
