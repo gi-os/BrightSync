@@ -1,5 +1,6 @@
 package com.gios.lightsync.sync
 
+import com.gios.light.common.LightCommon
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -49,16 +50,27 @@ class FleetVersionTest {
 
     @Test
     fun `newest wins across a mixed fleet`() {
-        val apps = listOf("1.2.0", "1.10.0", "1.2.1").map { fake(it) }
-        assertEquals("1.10.0", Fleet.newestCommon(apps))
+        // Numbers far above anything light-common will ship, on purpose. newestCommon counts
+        // this app's own compiled-in version too, so a fleet pinned just above the real one
+        // passes until the library catches up and then fails with nobody having touched it —
+        // which is what the 1.2.1 to 1.2.3 bump did to these two tests.
+        val apps = listOf("9.2.0", "9.10.0", "9.2.1").map { fake(it) }
+        assertEquals("9.10.0", Fleet.newestCommon(apps))
     }
 
     @Test
     fun `an app too old to answer does not become the newest`() {
         // Null commonVersion means the app predates 1.2.0. It must not drag the bar down, or
         // every other app would read as current against it.
-        val apps = listOf(fake("1.2.1"), fake(null))
-        assertEquals("1.2.1", Fleet.newestCommon(apps))
+        val apps = listOf(fake("9.2.1"), fake(null))
+        assertEquals("9.2.1", Fleet.newestCommon(apps))
+    }
+
+    @Test
+    fun `this app's own version is always in the running`() {
+        // The other half of the same rule, and the half the pinned numbers above were testing
+        // by accident: a fleet entirely behind this build reports this build.
+        assertEquals(LightCommon.VERSION, Fleet.newestCommon(listOf(fake("0.0.1"))))
     }
 
     private fun fake(common: String?) = FleetApp(
