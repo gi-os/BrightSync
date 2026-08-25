@@ -12,7 +12,7 @@ per app to opt in.
 Scan the code above with **BrightMarket** installed to open BrightSync there and
 install or update it directly. Don't have BrightMarket yet? Get it, and browse
 every Bright app, at
-**[gi-os.github.io/brightmarket-index/browse.html](https://gi-os.github.io/brightmarket-index/browse.html)**.
+**[brightmarket.gzl.dev](https://brightmarket.gzl.dev)**.
 
 | | |
 |---|---|
@@ -358,3 +358,21 @@ ui/SetupScreen.kt        server, token, passphrase, reachability
   passphrase to hand anything to Immich, which would have cost the one property the rest of this
   design is built on.
 - **Trusting the server.** It stores what it's given and hands it back. That's all.
+
+<!-- bright-footer:begin -->
+---
+
+## Bright\*
+
+*Nightly backups onto a NAS on your own LAN, because nothing on this phone syncs to anybody's cloud.*
+
+26 open-source apps for the **Light Phone III** — camera, music, maps, messages,
+reading, transit, games. The phone has no app store, so they install by sideload: scan one
+code from **[brightmarket.gzl.dev](https://brightmarket.gzl.dev)** and BrightMarket keeps them updated.
+
+[Roll](https://github.com/gi-os/Roll) · [BrightMusic](https://github.com/gi-os/BrightMusic) · [BrightWay](https://github.com/gi-os/BrightWay) · [BrightChat](https://github.com/gi-os/BrightChat) · [BrightControl](https://github.com/gi-os/BrightControl) · [BrightRemote](https://github.com/gi-os/BrightRemote) · [browse all 26 →](https://brightmarket.gzl.dev)
+
+The Light Phone does not sponsor or endorse any of these. Built by
+[Giovanni Lupo](https://github.com/gi-os) — if this one is useful to you, a ⭐ helps the next
+person find it.
+<!-- bright-footer:end -->
