@@ -1,5 +1,6 @@
 package com.gios.lightsync.sync
 
+import com.gios.light.common.LightCommon
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -47,18 +48,35 @@ class FleetVersionTest {
         assertTrue(cmp("unknown", "1.0.0") < 0)
     }
 
+    /**
+     * `newestCommon` includes the copy of light-common *this* app was built against, so any
+     * expectation written as a literal version expires the day the library passes it. It has now
+     * done that twice — once at 1.2.x and again at 1.3.0 — and both times the failure landed on a
+     * bump PR and read as though the bump had broken something.
+     *
+     * So the fixtures below are either absurd on purpose or compared against each other rather
+     * than against a number.
+     */
     @Test
     fun `newest wins across a mixed fleet`() {
-        val apps = listOf("1.2.0", "1.10.0", "1.2.1").map { fake(it) }
-        assertEquals("1.10.0", Fleet.newestCommon(apps))
+        // 99.0.0 rather than 1.10.0: the point is that a number wins, not which number.
+        val apps = listOf("1.2.0", "99.0.0", "1.2.1").map { fake(it) }
+        assertEquals("99.0.0", Fleet.newestCommon(apps))
     }
 
     @Test
     fun `an app too old to answer does not become the newest`() {
         // Null commonVersion means the app predates 1.2.0. It must not drag the bar down, or
-        // every other app would read as current against it.
-        val apps = listOf(fake("1.2.1"), fake(null))
-        assertEquals("1.2.1", Fleet.newestCommon(apps))
+        // every other app would read as current against it — so adding it changes nothing.
+        val withoutIt = Fleet.newestCommon(listOf(fake("1.2.1")))
+        val withIt = Fleet.newestCommon(listOf(fake("1.2.1"), fake(null)))
+        assertEquals(withoutIt, withIt)
+    }
+
+    @Test
+    fun `this app's own light-common counts as part of the fleet`() {
+        // The screen answers "is anything behind?", and the app asking is one of the answers.
+        assertEquals(LightCommon.VERSION, Fleet.newestCommon(listOf(fake("0.0.1"))))
     }
 
     private fun fake(common: String?) = FleetApp(
