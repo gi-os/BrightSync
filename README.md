@@ -1,3 +1,5 @@
+<img src="docs/icon.png" alt="" width="72" align="left" />
+
 # BrightSync
 
 Backups for the LightX apps, onto BasilNet. One app to set up, one container to run, and a file
