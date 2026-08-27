@@ -54,7 +54,7 @@ dependencies {
     // The wheel, and the SyncMeta keys the fleet screen reads out of each app's provider.
     // The agent compiling against the same constants as the apps is the only thing keeping
     // the two sides of an untyped ContentResolver.call in step.
-    implementation("com.gios:light-common:1.2.1")
+    implementation("com.gios:light-common:1.7.0")
 
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)
