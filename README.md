@@ -2,6 +2,8 @@
 
 # BrightSync
 
+[**⬇ Download the latest APK**](https://github.com/gi-os/BrightSync/releases/latest) · free, open source.
+
 Backups for the LightX apps, onto BasilNet. One app to set up, one container to run, and a file
 per app to opt in.
 
