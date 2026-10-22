@@ -57,8 +57,12 @@ class FleetVersionTest {
     fun `an app too old to answer does not become the newest`() {
         // Null commonVersion means the app predates 1.2.0. It must not drag the bar down, or
         // every other app would read as current against it.
-        val apps = listOf(fake("1.2.1"), fake(null))
-        assertEquals("1.2.1", Fleet.newestCommon(apps))
+        // Compared against the same fleet without it, not a literal: newestCommon also counts the
+        // agent's own LightCommon.VERSION, so a hard-coded "1.2.1" only held until the bundled
+        // library moved past it.
+        val answered = listOf(fake("1.2.1"))
+        val apps = answered + fake(null)
+        assertEquals(Fleet.newestCommon(answered), Fleet.newestCommon(apps))
     }
 
     private fun fake(common: String?) = FleetApp(
