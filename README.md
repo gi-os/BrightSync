@@ -1,6 +1,10 @@
+<a href="https://github.com/sponsors/gi-os"><img src="https://raw.githubusercontent.com/gi-os/gi-os/main/images/bright-sponsors.svg" width="100%" alt="Thank you to my sponsors"></a>
+
 <img src="docs/icon.png" alt="" width="72" align="left" />
 
 # BrightSync
+
+[**⬇ Download the latest APK**](https://github.com/gi-os/BrightSync/releases/latest) · free, open source.
 
 Backups for the LightX apps, onto BasilNet. One app to set up, one container to run, and a file
 per app to opt in.
@@ -378,3 +382,9 @@ The Light Phone does not sponsor or endorse any of these. Built by
 [Giovanni Lupo](https://github.com/gi-os) — if this one is useful to you, a ⭐ helps the next
 person find it.
 <!-- bright-footer:end -->
+
+## Support
+
+These apps are free, open, and built on my own time. Sponsorship pays the bills that don't go away: build servers, test hardware, and the crash reporter that keeps them shipping. Donation or not my code is always free for the world to use.
+
+[Sponsor on GitHub](https://github.com/sponsors/gi-os)
