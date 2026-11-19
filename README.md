@@ -398,7 +398,11 @@ then replace `signing-fingerprint.txt` with signer #2's SHA-256 digest. Do not c
 the original fingerprint. Keep the original private key out of CI; it is only needed
 offline to create the lineage.
 
-In **Settings → Secrets and variables → Actions**, set these five secrets:
+In [BrightSync's environment settings](https://github.com/gi-os/BrightSync/settings/environments),
+create an environment named `release`. Under **Deployment branches and tags**, choose
+**Selected branches and tags** and add a single **Branch** rule for `main`, with no tag
+rules. Add the five secrets below to that environment only. Do not use repository-wide
+secrets or upload the original key or its passwords.
 
 | Secret | Value |
 | --- | --- |
@@ -408,14 +412,14 @@ In **Settings → Secrets and variables → Actions**, set these five secrets:
 | `KEY_ALIAS` | `brightsync-release` |
 | `KEY_PASSWORD` | New key password |
 
-On Linux, upload the files without printing their contents and enter the other values when prompted:
+On Linux, stream the files and enter the passwords at the prompts:
 
 ```sh
-base64 -w 0 brightsync-new.jks | gh secret set RELEASE_KEYSTORE_BASE64 --repo gi-os/BrightSync
-base64 -w 0 brightsync.lineage | gh secret set SIGNING_LINEAGE_BASE64 --repo gi-os/BrightSync
-gh secret set KEYSTORE_PASSWORD --repo gi-os/BrightSync
-gh secret set KEY_ALIAS --repo gi-os/BrightSync
-gh secret set KEY_PASSWORD --repo gi-os/BrightSync
+base64 -w 0 brightsync-new.jks | gh secret set RELEASE_KEYSTORE_BASE64 --env release --repo gi-os/BrightSync
+base64 -w 0 brightsync.lineage | gh secret set SIGNING_LINEAGE_BASE64 --env release --repo gi-os/BrightSync
+gh secret set KEYSTORE_PASSWORD --env release --repo gi-os/BrightSync
+gh secret set KEY_ALIAS --env release --repo gi-os/BrightSync --body brightsync-release
+gh secret set KEY_PASSWORD --env release --repo gi-os/BrightSync
 ```
 
 CI signs with the new key using APK Signature Scheme v3 and verifies the proof of rotation
