@@ -365,6 +365,74 @@ ui/SetupScreen.kt        server, token, passphrase, reachability
   design is built on.
 - **Trusting the server.** It stores what it's given and hands it back. That's all.
 
+## Build
+
+```
+./gradlew :app:assembleRelease
+```
+
+Without signing credentials, the release APK is unsigned and debug builds use the standard Android
+debug key. Neither can update an installed production APK.
+
+### Release signing
+
+Before merging the signing change, disable **Build & Release APK** so the merge does
+not publish. In a private directory outside the checkout, use Android Build Tools
+35.0.0 to generate the replacement key and create a proof of rotation from the original
+release key. Use fresh passwords when prompted.
+
+```sh
+keytool -genkeypair -storetype JKS -keystore brightsync-new.jks -alias brightsync-release \
+  -keyalg RSA -keysize 3072 -validity 10000
+
+apksigner rotate --out brightsync.lineage \
+  --old-signer --ks /path/to/original/lightsync.jks --ks-key-alias lightsync \
+  --set-installed-data true --set-rollback false \
+  --new-signer --ks brightsync-new.jks --ks-key-alias brightsync-release
+
+apksigner lineage --in brightsync.lineage --print-certs
+```
+
+Verify that signer #1's SHA-256 digest matches `signing-lineage-root-fingerprint.txt`,
+then replace `signing-fingerprint.txt` with signer #2's SHA-256 digest. Do not change
+the original fingerprint. Keep the original private key out of CI; it is only needed
+offline to create the lineage.
+
+In [BrightSync's environment settings](https://github.com/gi-os/BrightSync/settings/environments),
+create an environment named `release`. Under **Deployment branches and tags**, choose
+**Selected branches and tags** and add a single **Branch** rule for `main`, with no tag
+rules. Add the five secrets below to that environment only. Do not use repository-wide
+secrets or upload the original key or its passwords.
+
+| Secret | Value |
+| --- | --- |
+| `RELEASE_KEYSTORE_BASE64` | Base64-encoded `brightsync-new.jks` |
+| `SIGNING_LINEAGE_BASE64` | Base64-encoded `brightsync.lineage` |
+| `KEYSTORE_PASSWORD` | New keystore password |
+| `KEY_ALIAS` | `brightsync-release` |
+| `KEY_PASSWORD` | New key password |
+
+On Linux, stream the files and enter the passwords at the prompts:
+
+```sh
+base64 -w 0 brightsync-new.jks | gh secret set RELEASE_KEYSTORE_BASE64 --env release --repo gi-os/BrightSync
+base64 -w 0 brightsync.lineage | gh secret set SIGNING_LINEAGE_BASE64 --env release --repo gi-os/BrightSync
+gh secret set KEYSTORE_PASSWORD --env release --repo gi-os/BrightSync
+gh secret set KEY_ALIAS --env release --repo gi-os/BrightSync --body brightsync-release
+gh secret set KEY_PASSWORD --env release --repo gi-os/BrightSync
+```
+
+CI signs with the new key using APK Signature Scheme v3 and verifies the proof of rotation
+from the original pin to the new pin. BrightSync requires Android API 29, so no supported
+device needs a v1/v2 signature or the old private key. Android can accept an in-place update,
+but a catalog that compares only the current certificate can still hide it from users on
+the old signer. Coordinate the BrightMarket catalog/updater transition before re-enabling
+publishing, and only re-enable it for an authorized release.
+
+A push to `main` (other than ignored paths) or a manual run of `build.yml` builds,
+signs, tags, and publishes. Tag pushes do not trigger it. Branch and PR checks
+in `check.yml` publish nothing.
+
 <!-- bright-footer:begin -->
 ---
 
